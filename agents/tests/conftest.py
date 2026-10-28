@@ -58,6 +58,7 @@ class FakeNode(BaseProvider):
         self.receipts: Dict[str, dict] = {}
         self.logs: List[dict] = []
         self.revert_next_estimate: Optional[str] = None  # revert data for the next eth_estimateGas
+        self.revert_estimate_for: Dict[str, str] = {}  # function selector -> revert data, every time
         self.fail_next_receipt = False
         self.requests: List[str] = []
         self.block_number = 10
@@ -120,6 +121,9 @@ class FakeNode(BaseProvider):
     def _eth_estimateGas(self, params):
         if self.revert_next_estimate is not None:
             data, self.revert_next_estimate = self.revert_next_estimate, None
+            return {"__error__": {"code": 3, "message": "execution reverted", "data": data}}
+        data = self.revert_estimate_for.get(str(params[0].get("data", ""))[:10])
+        if data is not None:
             return {"__error__": {"code": 3, "message": "execution reverted", "data": data}}
         return hex(100_000)
 
