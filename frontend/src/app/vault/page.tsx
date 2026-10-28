@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { formatUsd8, formatBps } from "@/lib/format";
+import { parseUnits } from "viem";
 import { Shield, Lock, AlertTriangle, CheckCircle2, Zap, PauseCircle, PlayCircle } from "lucide-react";
 
 export default function VaultPage() {
@@ -27,8 +28,8 @@ export default function VaultPage() {
       );
     } else {
       setBorrowStatus(
-        `SUCCESS: Borrowed ${formatUsd8(borrowAmount * 1e8)} against ${formatUsd8(
-          collateral * 1e8
+        `SUCCESS: Borrowed ${formatUsd8(parseUnits(borrowAmount.toString(), 8))} against ${formatUsd8(
+          parseUnits(collateral.toString(), 8)
         )} at ${(requestedLtvBps / 100).toFixed(2)}% LTV.`
       );
     }

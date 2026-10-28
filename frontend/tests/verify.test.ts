@@ -14,6 +14,9 @@ describe("Frontend Verification & Formatting Suite", () => {
     expect(formatUsd8("200000000001")).toBe("$2,000.00");
     expect(formatUsd8("3374300000002")).toBe("$33,743.00");
     expect(formatUsd8("0")).toBe("$0.00");
+    expect(formatUsd8(BigInt("100000000000000000000"))).toBe("$1,000,000,000,000.00");
+    expect(formatUsd8(BigInt("-50000000000"))).toBe("-$500.00");
+    expect(formatUsd8(BigInt("-5000000"))).toBe("-$0.05");
   });
 
   it("formats basis points into percentages correctly", () => {
