@@ -207,7 +207,7 @@ export function LandingPage() {
         <nav className="w-full border-2 border-foreground bg-background/95 backdrop-blur-md px-5 py-3 lg:px-8 flex items-center justify-between shadow-[4px_4px_0px_0px_hsl(var(--border))]">
           {/* Brand */}
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="h-8 w-8 bg-[#ea580c] flex items-center justify-center text-background font-bold text-xs tracking-wider">
+            <div className="h-8 w-8 bg-[#ea580c] flex items-center justify-center text-white font-bold text-xs tracking-wider shadow-[3px_3px_0px_0px_#ffffff] shrink-0">
               SP
             </div>
             <div className="flex flex-col">
@@ -645,7 +645,7 @@ export function LandingPage() {
             {/* Column 1: Brand & Status Telemetry (5 cols) */}
             <div className="md:col-span-5 space-y-4">
               <div className="flex items-center gap-3">
-                <div className="h-8 w-8 bg-[#ea580c] flex items-center justify-center text-white font-bold text-sm shadow-[2px_2px_0px_0px_hsl(var(--foreground))]">
+                <div className="h-8 w-8 bg-[#ea580c] flex items-center justify-center text-white font-bold text-xs tracking-wider shadow-[3px_3px_0px_0px_#ffffff] shrink-0">
                   SP
                 </div>
                 <div>
