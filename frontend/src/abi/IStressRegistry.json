@@ -3,168 +3,80 @@
     "type": "function",
     "name": "BOND",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
+    "outputs": [{ "name": "", "type": "uint256" }],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "CHALLENGE_WINDOW",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint64",
-        "internalType": "uint64"
-      }
-    ],
+    "outputs": [{ "name": "", "type": "uint64" }],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "RESOLUTION_WINDOW",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint64",
-        "internalType": "uint64"
-      }
-    ],
+    "outputs": [{ "name": "", "type": "uint64" }],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "TOLERANCE_BPS",
     "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint16",
-        "internalType": "uint16"
-      }
-    ],
+    "outputs": [{ "name": "", "type": "uint16" }],
     "stateMutability": "view"
   },
   {
     "type": "function",
-    "name": "challenge",
-    "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "reason",
-        "type": "uint8",
-        "internalType": "enum IStressRegistry.Reason"
-      },
-      {
-        "name": "counterResidualBadDebt",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "replayReportURI",
-        "type": "string",
-        "internalType": "string"
-      },
-      {
-        "name": "replayReportHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "payable"
+    "name": "resolver",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "address" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "claimCount",
+    "inputs": [],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "credits",
+    "inputs": [{ "name": "account", "type": "address" }],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "status",
+    "inputs": [{ "name": "claimId", "type": "uint256" }],
+    "outputs": [{ "name": "", "type": "uint8" }],
+    "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "claim",
-    "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
+    "inputs": [{ "name": "claimId", "type": "uint256" }],
     "outputs": [
       {
         "name": "",
         "type": "tuple",
-        "internalType": "struct IStressRegistry.Claim",
         "components": [
-          {
-            "name": "attester",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "challengeDeadline",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
-            "name": "state",
-            "type": "uint8",
-            "internalType": "enum IStressRegistry.State"
-          },
-          {
-            "name": "reason",
-            "type": "uint8",
-            "internalType": "enum IStressRegistry.Reason"
-          },
-          {
-            "name": "challenger",
-            "type": "address",
-            "internalType": "address"
-          },
-          {
-            "name": "resolutionDeadline",
-            "type": "uint64",
-            "internalType": "uint64"
-          },
-          {
-            "name": "marketId",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "evidenceHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "replayReportHash",
-            "type": "bytes32",
-            "internalType": "bytes32"
-          },
-          {
-            "name": "claimedResidualBadDebt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "counterResidualBadDebt",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "caseFileURI",
-            "type": "string",
-            "internalType": "string"
-          },
-          {
-            "name": "replayReportURI",
-            "type": "string",
-            "internalType": "string"
-          }
+          { "name": "attester", "type": "address" },
+          { "name": "challengeDeadline", "type": "uint64" },
+          { "name": "state", "type": "uint8" },
+          { "name": "reason", "type": "uint8" },
+          { "name": "challenger", "type": "address" },
+          { "name": "resolutionDeadline", "type": "uint64" },
+          { "name": "marketId", "type": "bytes32" },
+          { "name": "evidenceHash", "type": "bytes32" },
+          { "name": "replayReportHash", "type": "bytes32" },
+          { "name": "claimedResidualBadDebt", "type": "uint256" },
+          { "name": "counterResidualBadDebt", "type": "uint256" },
+          { "name": "caseFileURI", "type": "string" },
+          { "name": "replayReportURI", "type": "string" }
         ]
       }
     ],
@@ -172,145 +84,52 @@
   },
   {
     "type": "function",
-    "name": "claimCount",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+    "name": "postClaim",
+    "inputs": [
+      { "name": "marketId", "type": "bytes32" },
+      { "name": "claimedResidualBadDebt", "type": "uint256" },
+      { "name": "evidenceHash", "type": "bytes32" },
+      { "name": "caseFileURI", "type": "string" }
     ],
-    "stateMutability": "view"
+    "outputs": [{ "name": "claimId", "type": "uint256" }],
+    "stateMutability": "payable"
   },
   {
     "type": "function",
-    "name": "credits",
+    "name": "challenge",
     "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "expireUnresolved",
-    "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
+      { "name": "claimId", "type": "uint256" },
+      { "name": "reason", "type": "uint8" },
+      { "name": "counterResidualBadDebt", "type": "uint256" },
+      { "name": "replayReportURI", "type": "string" },
+      { "name": "replayReportHash", "type": "bytes32" }
     ],
     "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
     "name": "finalize",
-    "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
+    "inputs": [{ "name": "claimId", "type": "uint256" }],
     "outputs": [],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "postClaim",
-    "inputs": [
-      {
-        "name": "marketId",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "claimedResidualBadDebt",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "evidenceHash",
-        "type": "bytes32",
-        "internalType": "bytes32"
-      },
-      {
-        "name": "caseFileURI",
-        "type": "string",
-        "internalType": "string"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "payable"
   },
   {
     "type": "function",
     "name": "resolve",
     "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "challengeUpheld",
-        "type": "bool",
-        "internalType": "bool"
-      }
+      { "name": "claimId", "type": "uint256" },
+      { "name": "challengeUpheld", "type": "bool" }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
     "type": "function",
-    "name": "resolver",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "address",
-        "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "status",
-    "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint8",
-        "internalType": "enum IStressRegistry.State"
-      }
-    ],
-    "stateMutability": "view"
+    "name": "expireUnresolved",
+    "inputs": [{ "name": "claimId", "type": "uint256" }],
+    "outputs": [],
+    "stateMutability": "nonpayable"
   },
   {
     "type": "function",
@@ -321,278 +140,57 @@
   },
   {
     "type": "event",
-    "name": "ClaimChallenged",
-    "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "challenger",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "reason",
-        "type": "uint8",
-        "indexed": false,
-        "internalType": "enum IStressRegistry.Reason"
-      },
-      {
-        "name": "counterResidualBadDebt",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "replayReportURI",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
-        "name": "replayReportHash",
-        "type": "bytes32",
-        "indexed": false,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "resolutionDeadline",
-        "type": "uint64",
-        "indexed": false,
-        "internalType": "uint64"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ClaimExpired",
-    "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ClaimFinalized",
-    "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "ClaimPosted",
     "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "attester",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "marketId",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "claimedResidualBadDebt",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "evidenceHash",
-        "type": "bytes32",
-        "indexed": false,
-        "internalType": "bytes32"
-      },
-      {
-        "name": "caseFileURI",
-        "type": "string",
-        "indexed": false,
-        "internalType": "string"
-      },
-      {
-        "name": "challengeDeadline",
-        "type": "uint64",
-        "indexed": false,
-        "internalType": "uint64"
-      }
-    ],
-    "anonymous": false
+      { "name": "claimId", "type": "uint256", "indexed": true },
+      { "name": "attester", "type": "address", "indexed": true },
+      { "name": "marketId", "type": "bytes32", "indexed": true },
+      { "name": "claimedResidualBadDebt", "type": "uint256", "indexed": false },
+      { "name": "evidenceHash", "type": "bytes32", "indexed": false },
+      { "name": "caseFileURI", "type": "string", "indexed": false },
+      { "name": "challengeDeadline", "type": "uint64", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ClaimChallenged",
+    "inputs": [
+      { "name": "claimId", "type": "uint256", "indexed": true },
+      { "name": "challenger", "type": "address", "indexed": true },
+      { "name": "reason", "type": "uint8", "indexed": false },
+      { "name": "counterResidualBadDebt", "type": "uint256", "indexed": false },
+      { "name": "replayReportURI", "type": "string", "indexed": false },
+      { "name": "replayReportHash", "type": "bytes32", "indexed": false },
+      { "name": "resolutionDeadline", "type": "uint64", "indexed": false }
+    ]
   },
   {
     "type": "event",
     "name": "ClaimResolved",
     "inputs": [
-      {
-        "name": "claimId",
-        "type": "uint256",
-        "indexed": true,
-        "internalType": "uint256"
-      },
-      {
-        "name": "challengeUpheld",
-        "type": "bool",
-        "indexed": false,
-        "internalType": "bool"
-      },
-      {
-        "name": "winner",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amountCredited",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
+      { "name": "claimId", "type": "uint256", "indexed": true },
+      { "name": "challengeUpheld", "type": "bool", "indexed": false },
+      { "name": "winner", "type": "address", "indexed": true },
+      { "name": "amountCredited", "type": "uint256", "indexed": false }
+    ]
+  },
+  {
+    "type": "event",
+    "name": "ClaimFinalized",
+    "inputs": [{ "name": "claimId", "type": "uint256", "indexed": true }]
+  },
+  {
+    "type": "event",
+    "name": "ClaimExpired",
+    "inputs": [{ "name": "claimId", "type": "uint256", "indexed": true }]
   },
   {
     "type": "event",
     "name": "Withdrawn",
     "inputs": [
-      {
-        "name": "account",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "error",
-    "name": "AttesterCannotChallenge",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BadReason",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "BadURI",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ChallengeWindowClosed",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ChallengeWindowOpen",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "CounterEqualsClaim",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "InvalidState",
-    "inputs": [
-      {
-        "name": "current",
-        "type": "uint8",
-        "internalType": "enum IStressRegistry.State"
-      }
+      { "name": "account", "type": "address", "indexed": true },
+      { "name": "amount", "type": "uint256", "indexed": false }
     ]
-  },
-  {
-    "type": "error",
-    "name": "NotResolver",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "NothingToWithdraw",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ResolutionWindowClosed",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ResolutionWindowOpen",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ResolverIsParty",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "TransferFailed",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "WrongBond",
-    "inputs": [
-      {
-        "name": "sent",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "required",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "ZeroEvidenceHash",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ZeroMarketId",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ZeroReportHash",
-    "inputs": []
   }
 ]
+
