@@ -17,6 +17,8 @@ import {
   AlertTriangle,
   ExternalLink,
 } from "lucide-react";
+import { RegisterAuthModal, type OperatorSession } from "./RegisterAuthModal";
+import { CommandCenterSection } from "./CommandCenterSection";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -184,6 +186,20 @@ const PROTOCOL_STATS = [
 ];
 
 export function LandingPage() {
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [session, setSession] = useState<OperatorSession | null>(null);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem("stressproof_operator_session");
+      if (stored) {
+        setSession(JSON.parse(stored));
+      }
+    } catch (e) {
+      // Ignore local storage error
+    }
+  }, []);
+
   return (
     <div className="w-full min-h-screen bg-background text-foreground dot-grid-bg font-mono flex flex-col selection:bg-[#ea580c] selection:text-white">
       {/* ── Brutalist Top Navbar ── */}
@@ -198,10 +214,6 @@ export function LandingPage() {
               <span className="text-xs font-bold tracking-[0.2em] uppercase text-foreground">
                 STRESSPROOF
               </span>
-              <span className="text-[10px] text-muted-foreground tracking-widest uppercase flex items-center gap-1">
-                <span className="h-1.5 w-1.5 bg-[#ea580c] animate-blink" />
-                RISK_SETTLEMENT // V1.0
-              </span>
             </div>
           </Link>
 
@@ -213,22 +225,30 @@ export function LandingPage() {
             <Link href="#telemetry" className="hover:text-foreground transition-colors">
               TELEMETRY
             </Link>
+            <Link href="#command-center" className="hover:text-foreground transition-colors flex items-center gap-1">
+              COMMAND_CENTER
+            </Link>
             <Link href="#roles" className="hover:text-foreground transition-colors">
               ROLES
-            </Link>
-            <Link href="/dashboard" className="text-foreground hover:text-[#ea580c] transition-colors flex items-center gap-1">
-              COMMAND_CENTER
             </Link>
           </div>
 
           {/* Right CTAs */}
           <div className="flex items-center gap-3">
-            <Link
-              href="/claims"
-              className="hidden sm:inline-block border border-border px-3 py-1.5 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-foreground transition-all"
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="hidden sm:inline-flex items-center gap-1.5 border border-border px-3 py-1.5 text-xs uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-foreground transition-all"
             >
-              REGISTRY
-            </Link>
+              {session?.isRegistered ? (
+                <>
+                  <span className="h-1.5 w-1.5 bg-emerald-400 animate-pulse" />
+                  <span className="max-w-[120px] truncate">{session.handle}</span>
+                </>
+              ) : (
+                <span>REGISTER</span>
+              )}
+            </button>
             <Link
               href="/dashboard"
               className="group flex items-center gap-0 bg-foreground text-background text-xs font-bold uppercase tracking-wider border-2 border-foreground hover:bg-[#ea580c] hover:border-[#ea580c] hover:text-white transition-all shadow-[2px_2px_0px_0px_hsl(var(--border))]"
@@ -614,6 +634,9 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* ── Risk Command Center Section ── */}
+      <CommandCenterSection />
+
       {/* ── Brutalist Footer ── */}
       <footer className="w-full border-t-2 border-foreground bg-background px-6 py-12 lg:px-16 text-xs text-muted-foreground font-mono">
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-border pb-8 mb-8">
@@ -631,16 +654,23 @@ export function LandingPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-6 text-xs uppercase font-bold text-muted-foreground">
+          <div className="flex flex-wrap gap-6 text-xs uppercase font-bold text-muted-foreground items-center">
             <Link href="/dashboard" className="hover:text-foreground">
               DASHBOARD
+            </Link>
+            <Link href="#command-center" className="hover:text-foreground">
+              COMMAND_CENTER
             </Link>
             <Link href="/stress" className="hover:text-foreground">
               SIMULATION
             </Link>
-            <Link href="/claims" className="hover:text-foreground">
-              REGISTRY
-            </Link>
+            <button
+              type="button"
+              onClick={() => setIsAuthModalOpen(true)}
+              className="hover:text-foreground uppercase font-bold text-left"
+            >
+              {session?.isRegistered ? "OPERATOR_NODE" : "REGISTER"}
+            </button>
             <Link href="/vault" className="hover:text-foreground">
               CIRCUIT_BREAKER
             </Link>
@@ -652,12 +682,16 @@ export function LandingPage() {
 
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] uppercase">
           <span>&copy; 2026 SUPERCONSCIOUS / STRESSPROOF. ALL RIGHTS RESERVED.</span>
-          <div className="flex items-center gap-3">
-            <span className="h-1.5 w-1.5 bg-emerald-400 animate-pulse" />
-            <span className="text-foreground font-bold">BASE_SEPOLIA: 0x5FbDB2315678...</span>
-          </div>
         </div>
       </footer>
+
+      {/* ── Demo Frontend Auth / Register Modal ── */}
+      <RegisterAuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        session={session}
+        onUpdateSession={setSession}
+      />
     </div>
   );
 }

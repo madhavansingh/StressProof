@@ -82,14 +82,14 @@ export function PortalSidebar() {
       {/* Brutalist Sidebar Shell */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-[66] w-64 bg-card border-r-2 border-border flex flex-col justify-between transition-transform duration-200 ease-in-out font-mono
-          lg:translate-x-0 lg:static lg:w-64 lg:min-h-screen
+          fixed inset-y-0 left-0 z-[66] w-64 h-screen bg-card border-r-2 border-border flex flex-col justify-between transition-transform duration-200 ease-in-out font-mono shrink-0 select-none
+          lg:translate-x-0 lg:static lg:h-screen lg:shrink-0
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        <div className="flex flex-col">
+        <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
           {/* Brand Header */}
-          <div className="h-16 px-5 flex items-center justify-between border-b-2 border-border bg-card">
+          <div className="h-16 px-5 flex items-center justify-between border-b-2 border-border bg-card shrink-0">
             <Link
               href="/"
               className="flex items-center gap-3 group"
@@ -102,16 +102,12 @@ export function PortalSidebar() {
                 <span className="text-xs font-bold tracking-widest uppercase text-foreground">
                   STRESSPROOF
                 </span>
-                <span className="text-[10px] text-muted-foreground tracking-widest uppercase flex items-center gap-1">
-                  <span className="h-1.5 w-1.5 bg-[#ea580c] animate-blink" />
-                  RISK_OS // V1
-                </span>
               </div>
             </Link>
           </div>
 
           {/* Section Marker */}
-          <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center justify-between">
+          <div className="px-5 py-3 border-b border-border bg-muted/20 flex items-center justify-between shrink-0">
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
               {"// NAVIGATION"}
             </span>
@@ -158,7 +154,7 @@ export function PortalSidebar() {
         </div>
 
         {/* Sidebar Footer & Operational Status */}
-        <div className="p-4 border-t-2 border-border bg-card space-y-3">
+        <div className="p-4 border-t-2 border-border bg-card space-y-3 shrink-0">
           <div className="border border-border p-3 space-y-2 bg-background/50">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase">
               <span>SYSTEM_STATUS</span>
@@ -179,10 +175,10 @@ export function PortalSidebar() {
 
           <Link
             href="/"
-            className="flex items-center justify-center gap-2 w-full py-2 border border-foreground/30 text-[11px] font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            className="flex items-center justify-center gap-2 w-full py-2 border border-border text-[11px] font-mono uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-foreground hover:bg-secondary transition-all"
           >
-            <ArrowLeft className="h-3 w-3" />
-            <span>&larr; BACK_TO_LANDING</span>
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>BACK_TO_LANDING</span>
           </Link>
         </div>
       </aside>

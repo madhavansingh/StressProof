@@ -61,16 +61,16 @@ export function RecentAttestationsWidget({ className = "" }: { className?: strin
   return (
     <div className={`w-full flex flex-col justify-between space-y-4 font-mono ${className}`}>
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between pb-3 border-b-2 border-border">
-        <div>
-          <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+      <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b-2 border-border">
+        <div className="min-w-0">
+          <span className="text-[10px] uppercase tracking-widest text-muted-foreground block">
             {"// REGISTRY_LOGS"}
           </span>
-          <p className="text-xl sm:text-2xl font-bold tracking-tight text-foreground mt-0.5">
+          <p className="text-base sm:text-lg font-bold tracking-tight text-foreground mt-0.5 truncate">
             RECENT_ATTESTATIONS
           </p>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 border border-border bg-secondary text-[11px] font-bold text-foreground">
+        <div className="shrink-0 flex items-center gap-1.5 px-2 py-0.5 border border-border bg-secondary text-[10px] font-bold text-foreground">
           <span>[OPTIMISTIC_WINDOW]</span>
         </div>
       </div>
