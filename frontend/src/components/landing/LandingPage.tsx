@@ -637,51 +637,146 @@ export function LandingPage() {
       {/* ── Risk Command Center Section ── */}
       <CommandCenterSection />
 
-      {/* ── Brutalist Footer ── */}
+      {/* ── Brutalist Protocol Footer ── */}
       <footer className="w-full border-t-2 border-foreground bg-background px-6 py-12 lg:px-16 text-xs text-muted-foreground font-mono">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-border pb-8 mb-8">
-          <div className="flex items-center gap-3">
-            <div className="h-7 w-7 bg-[#ea580c] flex items-center justify-center text-background font-bold text-xs">
-              SP
-            </div>
-            <div>
-              <span className="text-xs font-bold uppercase text-foreground">
-                STRESSPROOF PROTOCOL
-              </span>
-              <p className="text-[10px] text-muted-foreground uppercase">
-                DETERMINISTIC RISK SETTLEMENT FOR LENDING MARKETS
+        <div className="max-w-6xl mx-auto">
+          {/* Top Grid: Protocol Info + Categorized Link Matrices */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b border-border">
+            {/* Column 1: Brand & Status Telemetry (5 cols) */}
+            <div className="md:col-span-5 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 bg-[#ea580c] flex items-center justify-center text-white font-bold text-sm shadow-[2px_2px_0px_0px_hsl(var(--foreground))]">
+                  SP
+                </div>
+                <div>
+                  <span className="text-sm font-bold uppercase tracking-wider text-foreground block">
+                    STRESSPROOF PROTOCOL
+                  </span>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-tight">
+                    DETERMINISTIC RISK SETTLEMENT FOR LENDING MARKETS
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground uppercase leading-relaxed max-w-sm">
+                Autonomous liquidation cascade simulation, optimistic dispute settlement, and on-chain circuit breaker defense for DeFi credit pools.
               </p>
+
+              {/* Live Protocol Badges */}
+              <div className="flex flex-wrap gap-2 pt-1">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-emerald-500/40 bg-emerald-950/20 text-emerald-400 text-[10px] font-bold">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  BASE_SEPOLIA // 84532
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-border bg-secondary text-foreground text-[10px] font-bold">
+                  BOND: 0.01 ETH
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-[#ea580c]/40 bg-[#ea580c]/10 text-[#ea580c] text-[10px] font-bold">
+                  WINDOW: 120S
+                </div>
+              </div>
+            </div>
+
+            {/* Column 2: Operations (2 cols) */}
+            <div className="md:col-span-2 space-y-3">
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground border-b border-border pb-1.5">
+                // OPERATIONS
+              </h4>
+              <ul className="space-y-2 text-xs uppercase">
+                <li>
+                  <Link href="/dashboard" className="hover:text-[#ea580c] transition-colors flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">&gt;</span> DASHBOARD
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/stress" className="hover:text-[#ea580c] transition-colors flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">&gt;</span> SIMULATION
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/claims" className="hover:text-[#ea580c] transition-colors flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">&gt;</span> REGISTRY
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/vault" className="hover:text-[#ea580c] transition-colors flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">&gt;</span> CIRCUIT_BREAKER
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/feed" className="hover:text-[#ea580c] transition-colors flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">&gt;</span> TELEMETRY
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 3: System Architecture & Docs (3 cols) */}
+            <div className="md:col-span-3 space-y-3">
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground border-b border-border pb-1.5">
+                // ARCHITECTURE
+              </h4>
+              <ul className="space-y-2 text-xs uppercase">
+                <li>
+                  <Link href="#architecture" className="hover:text-[#ea580c] transition-colors flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">&gt;</span> 4-LAYER_PIPELINE
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#command-center" className="hover:text-[#ea580c] transition-colors flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">&gt;</span> COMMAND_CENTER
+                  </Link>
+                </li>
+                <li>
+                  <Link href="#telemetry" className="hover:text-[#ea580c] transition-colors flex items-center gap-1.5">
+                    <span className="text-[10px] text-muted-foreground">&gt;</span> REPLAY_ENGINE
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="https://github.com/madhavansingh/StressProof"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-[#ea580c] transition-colors flex items-center gap-1.5"
+                  >
+                    <span className="text-[10px] text-muted-foreground">&gt;</span> SOURCE_CODE &nearr;
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 4: Operator Node Access (2 cols) */}
+            <div className="md:col-span-2 space-y-3">
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-foreground border-b border-border pb-1.5">
+                // NODE_OPERATOR
+              </h4>
+              <p className="text-[10px] text-muted-foreground uppercase leading-relaxed">
+                Register an attester or challenger node to inspect state and post bonded claims.
+              </p>
+              <button
+                type="button"
+                onClick={() => setIsAuthModalOpen(true)}
+                className="w-full py-2 px-3 border border-[#ea580c] bg-[#ea580c]/10 text-[#ea580c] text-xs font-bold uppercase hover:bg-[#ea580c] hover:text-white transition-all text-center tracking-wider shadow-[2px_2px_0px_0px_hsl(var(--foreground))]"
+              >
+                {session?.isRegistered ? `NODE: ${session.role}` : "REGISTER_NODE"}
+              </button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-6 text-xs uppercase font-bold text-muted-foreground items-center">
-            <Link href="/dashboard" className="hover:text-foreground">
-              DASHBOARD
-            </Link>
-            <Link href="#command-center" className="hover:text-foreground">
-              COMMAND_CENTER
-            </Link>
-            <Link href="/stress" className="hover:text-foreground">
-              SIMULATION
-            </Link>
-            <button
-              type="button"
-              onClick={() => setIsAuthModalOpen(true)}
-              className="hover:text-foreground uppercase font-bold text-left"
-            >
-              {session?.isRegistered ? "OPERATOR_NODE" : "REGISTER"}
-            </button>
-            <Link href="/vault" className="hover:text-foreground">
-              CIRCUIT_BREAKER
-            </Link>
-            <Link href="/feed" className="hover:text-foreground">
-              TELEMETRY
-            </Link>
-          </div>
-        </div>
+          {/* Bottom Bar: Copyright & System Status */}
+          <div className="pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-[10px] uppercase">
+            <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
+              <span>&copy; 2026 SUPERCONSCIOUS / STRESSPROOF. ALL RIGHTS RESERVED.</span>
+              <span className="hidden sm:inline text-border">|</span>
+              <span>VERIFIABLE DEFI RISK ENGINE</span>
+            </div>
 
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-[10px] uppercase">
-          <span>&copy; 2026 SUPERCONSCIOUS / STRESSPROOF. ALL RIGHTS RESERVED.</span>
+            <div className="flex items-center gap-2 text-foreground font-mono">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-muted-foreground">ENGINE:</span>
+              <span className="font-bold">DETERMINISTIC_REPLAYER_V1</span>
+            </div>
+          </div>
         </div>
       </footer>
 
