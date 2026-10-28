@@ -1,0 +1,18 @@
+{
+  "chainId": 31337,
+  "registry": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
+  "vault": "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
+  "market": "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+  "registryDeployBlock": 0,
+  "resolver": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+  "marketId": "0x40d51381e4b3e8a71bbbf288e285817d4567c9c0f99b2eb8c15682fa08d3c7c2",
+  "marketIdString": "aave-v3-eth-weth-stable",
+  "bondWei": "10000000000000000",
+  "challengeWindowSec": 120,
+  "resolutionWindowSec": 300,
+  "pauseThresholdUsd8": "400000000002",
+  "ltvThresholdUsd8": "100000000000",
+  "reducedLtvBps": 5000,
+  "defaultMaxLtvBps": 8000,
+  "gitCommit": "0000000000000000000000000000000000000000"
+}

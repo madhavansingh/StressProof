@@ -1,0 +1,24 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stressproof-pipeline"
+version = "0.1.0"
+description = "Aave v3 extraction and snapshot normalization pipeline for StressProof"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "stressproof-core",
+    "web3>=7.0.0",
+    "eth-utils>=4.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stressproof_pipeline"]

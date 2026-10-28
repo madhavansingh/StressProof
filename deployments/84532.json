@@ -1,0 +1,18 @@
+{
+  "chainId": 84532,
+  "registry": "0x0000000000000000000000000000000000000000",
+  "vault": "0x0000000000000000000000000000000000000000",
+  "market": "0x0000000000000000000000000000000000000000",
+  "registryDeployBlock": 0,
+  "resolver": "0x0000000000000000000000000000000000000000",
+  "marketId": "0x40d51381e4b3e8a71bbbf288e285817d4567c9c0f99b2eb8c15682fa08d3c7c2",
+  "marketIdString": "aave-v3-eth-weth-stable",
+  "bondWei": "10000000000000000",
+  "challengeWindowSec": 120,
+  "resolutionWindowSec": 300,
+  "pauseThresholdUsd8": "0",
+  "ltvThresholdUsd8": "0",
+  "reducedLtvBps": 5000,
+  "defaultMaxLtvBps": 8000,
+  "gitCommit": "0000000000000000000000000000000000000000"
+}

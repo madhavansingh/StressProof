@@ -1,0 +1,40 @@
+[project]
+name = "stressproof-workspace"
+version = "0.1.0"
+description = "Monorepo workspace for StressProof"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "stressproof-core",
+    "stressproof-pipeline",
+    "stressproof-backend",
+    "stressproof-agents",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "hypothesis>=6.90.0",
+]
+
+[tool.uv]
+package = false
+
+[tool.uv.workspace]
+members = [
+    "core",
+    "pipeline",
+    "backend",
+    "agents"
+]
+
+[tool.uv.sources]
+stressproof-core = { workspace = true }
+stressproof-pipeline = { workspace = true }
+stressproof-backend = { workspace = true }
+stressproof-agents = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["core/tests", "backend/tests", "pipeline/tests", "agents/tests"]
+python_files = ["test_*.py"]
+addopts = "-v --strict-markers"

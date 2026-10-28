@@ -1,0 +1,23 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "stressproof-core"
+version = "0.1.0"
+description = "Pure Python deterministic calculation engine and canonical serialization for StressProof"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "eth-hash[pycryptodome]>=0.7.0",
+    "typing-extensions>=4.8.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+    "hypothesis>=6.90.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/stressproof_core"]
