@@ -137,21 +137,42 @@ class Violation:
     message: str
 
 
+Verdict = Literal["MATCH", "WRONG_RESULT", "EVIDENCE_INVALID"]
+
+
+@dataclass(frozen=True)
+class Evaluation:
+    """Outcome of verdict.evaluate() for one claim (implementationplan.md §11 verdict order)."""
+
+    verdict: Verdict
+    violations: List[Violation]
+    hash_matches: bool
+    recomputed: Optional[ReplayResult]      # None when the replay did not run (EVIDENCE_INVALID)
+    counter_residual_usd8: int              # value for challenge(); 0 for MATCH and EVIDENCE_INVALID
+    info_mismatches: List[str]              # informational metrics that differ from the file (C-18)
+    claimed_in_file_usd8: Optional[str]     # results.residualBadDebtUsd8, None if unreadable
+
+    @property
+    def violation_codes(self) -> List[str]:
+        """Distinct V-codes in first-seen order."""
+        return list(dict.fromkeys(v.code for v in self.violations))
+
+
 class ReplayReport(TypedDict):
     caseFileCopyURI: str
     chainId: int
     claimId: str
-    claimedInFileUsd8: str
+    claimedInFileUsd8: Optional[str]       # null when the case file could not be read
     claimedOnChainUsd8: str
     evidenceHash: str
     fetchedFrom: str
     hashMatches: bool
     infoMismatches: List[str]
     modelId: str
-    recomputed: Results
+    recomputed: Optional[Results]          # null when the replay did not run (EVIDENCE_INVALID)
     registry: str
     replayerCommit: str
     schemaVersion: int
-    verdict: Literal["MATCH", "WRONG_RESULT", "EVIDENCE_INVALID"]
+    verdict: Verdict
     violations: List[str]
     watcher: str
