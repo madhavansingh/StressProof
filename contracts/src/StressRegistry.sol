@@ -151,10 +151,12 @@ contract StressRegistry is IStressRegistry {
 
         credits[msg.sender] = 0;
         totalCredited -= amt;
+        // Emit before the external call so the log order cannot be affected by the receiver.
+        // If the transfer fails, the whole call reverts and the event is discarded too.
+        emit Withdrawn(msg.sender, amt);
 
         (bool ok, ) = msg.sender.call{value: amt}("");
         if (!ok) revert TransferFailed();
-        emit Withdrawn(msg.sender, amt);
     }
 
     function _move(address to, uint256 amt) private {
