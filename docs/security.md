@@ -23,6 +23,7 @@ This document outlines the security architecture, threat model, and explicit mit
 | **S-13** | Dependency supply chain attacks | Python / Node | Pinned lockfiles (`uv.lock`, `pnpm-lock.yaml`), automated Socket scan. |
 | **S-14** | Prompt injection or malformed LLM outputs | `agents/attester/` | LLM outputs are validated strictly by code (`shockBps` within `[-9000, -1]`). On validation failure, fall back to default fixed scenario. |
 | **S-15** | Hash mismatch due to NIST SHA-3 vs. Keccak | `core/` | Use `eth-hash` / `eth-utils` exclusively. Pinned unit test verifying `keccak256("")`. |
+| **S-16** | Client-Side Write Token Exposure | `frontend/` | **Integration Risk:** `NEXT_PUBLIC_API_WRITE_TOKEN` exposes the backend write secret to browser code. **Mitigation Plan:** The frontend must call a trusted server-side component (Next.js Server Action / API route proxy) with a private server-only token, or enforce per-user Web3 authentication. A shared secret in browser bundles cannot protect write access. |
 
 ---
 

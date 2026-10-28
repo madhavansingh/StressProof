@@ -35,10 +35,24 @@ If a discrepancy or violation is found, this report is canonically serialized, s
 }
 ```
 
+> [!NOTE]
+> **Nullable Fields**: When replay execution cannot run (e.g., hash mismatch, unreadable case-file, structural schema validation failure, or network fetch failure), `recomputed` and `claimedInFileUsd8` can be `null`. The 17 canonical keys remain invariant.
+
 ---
 
-## Verdict Categories
+## Verdict Categories & Contract Reason Mapping
 
 * `MATCH`: The evidence is valid and the recomputed residual bad debt exactly matches the claim. No challenge is posted.
-* `WRONG_RESULT`: The evidence is valid and canonical, but `recomputed.residualBadDebtUsd8` does not equal `claimedOnChainUsd8`. A challenge is posted with `counterResidualBadDebt = recomputed.residualBadDebtUsd8`.
-* `EVIDENCE_INVALID`: The evidence could not be fetched, failed Keccak-256 hash verification, or failed any structural validation rule V-01..V-13. A challenge is posted with `counterResidualBadDebt = 0`.
+* `WRONG_RESULT` (Contract Reason `1`): The evidence is valid and canonical, but `recomputed.residualBadDebtUsd8` does not equal `claimedOnChainUsd8`. A challenge is posted with `counterResidualBadDebt = recomputed.residualBadDebtUsd8`.
+* `EVIDENCE_INVALID` (Contract Reason `2`): The evidence could not be fetched, failed Keccak-256 hash verification, or failed any structural validation rule V-01..V-13. A challenge is posted with `counterResidualBadDebt = 0`.
+
+### Claim Discrepancy Edge Case
+If the case file's internal claimed figure (`claimedInFileUsd8`) disagrees with the on-chain claim (`claimedOnChainUsd8`), but the recomputed execution agrees with the on-chain claim (`recomputed.residualBadDebtUsd8 == claimedOnChainUsd8`), the verdict is **`EVIDENCE_INVALID`** (Reason `2`), **not** `WRONG_RESULT`.
+
+Issuing `WRONG_RESULT` in this scenario would submit `counterResidualBadDebt == claimedOnChainUsd8`, triggering an on-chain revert under the contract guard:
+```solidity
+if (counterResidualBadDebt == claim.claimedResidualBadDebt) {
+    revert CounterEqualsClaim();
+}
+```
+Hence, `EVIDENCE_INVALID` with `counterResidualBadDebt = 0` is the canonical and contract-safe challenge path.
