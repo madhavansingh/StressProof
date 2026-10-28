@@ -58,10 +58,15 @@ contracts/broadcast/
 broadcast/
 # Foundry dependencies (forge-std submodule) must stay tracked despite the Python `lib/` rule above
 !contracts/lib/
+# Frontend source (src/lib) is code, not a build folder; keep it tracked despite the `lib/` rule
+!frontend/src/lib/
 cache/
 
 # Data & Runtime Files
+# Runtime data is ignored, except committed fixtures and .gitkeep placeholders.
+# Git cannot re-include a file inside an excluded folder, so folders are re-included first.
 data/**
+!data/**/
 !data/fixtures/**
 !data/**/.gitkeep
 *.sqlite

@@ -77,6 +77,8 @@ contract DemoVault {
         if (msg.sender != owner) revert NotOwner();
         borrowPaused = false;
         maxLtvBps = DEFAULT_MAX_LTV_BPS;
+        // No claim is driving the controls after a reset. `applied` is kept so claims cannot be replayed.
+        lastAppliedClaimId = 0;
         emit ControlsReset();
     }
 }
