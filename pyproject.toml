@@ -35,6 +35,6 @@ stressproof-backend = { workspace = true }
 stressproof-agents = { workspace = true }
 
 [tool.pytest.ini_options]
-testpaths = ["core/tests", "backend/tests", "pipeline/tests", "agents/tests"]
+testpaths = ["core/tests", "backend/tests", "pipeline/tests", "agents/tests", "scripts/tests"]
 python_files = ["test_*.py"]
 addopts = "-v --strict-markers"
