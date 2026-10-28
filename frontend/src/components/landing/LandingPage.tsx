@@ -661,20 +661,6 @@ export function LandingPage() {
               <p className="text-xs text-muted-foreground uppercase leading-relaxed max-w-sm">
                 Autonomous liquidation cascade simulation, optimistic dispute settlement, and on-chain circuit breaker defense for DeFi credit pools.
               </p>
-
-              {/* Live Protocol Badges */}
-              <div className="flex flex-wrap gap-2 pt-1">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-emerald-500/40 bg-emerald-950/20 text-emerald-400 text-[10px] font-bold">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  BASE_SEPOLIA // 84532
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-border bg-secondary text-foreground text-[10px] font-bold">
-                  BOND: 0.01 ETH
-                </div>
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 border border-[#ea580c]/40 bg-[#ea580c]/10 text-[#ea580c] text-[10px] font-bold">
-                  WINDOW: 120S
-                </div>
-              </div>
             </div>
 
             {/* Column 2: Operations (2 cols) */}
@@ -763,18 +749,10 @@ export function LandingPage() {
             </div>
           </div>
 
-          {/* Bottom Bar: Copyright & System Status */}
+          {/* Bottom Bar: Copyright */}
           <div className="pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-[10px] uppercase">
             <div className="flex flex-wrap items-center gap-3 text-muted-foreground">
               <span>&copy; 2026 SUPERCONSCIOUS / STRESSPROOF. ALL RIGHTS RESERVED.</span>
-              <span className="hidden sm:inline text-border">|</span>
-              <span>VERIFIABLE DEFI RISK ENGINE</span>
-            </div>
-
-            <div className="flex items-center gap-2 text-foreground font-mono">
-              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-muted-foreground">ENGINE:</span>
-              <span className="font-bold">DETERMINISTIC_REPLAYER_V1</span>
             </div>
           </div>
         </div>
