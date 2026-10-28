@@ -44,21 +44,21 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
   return (
     <div className={`w-full flex flex-col justify-between space-y-4 font-mono ${className}`}>
       {/* Top Header */}
-      <div className="flex items-center justify-between pb-3 border-b-2 border-border">
-        <div className="flex items-center gap-3">
-          <div className="h-8 w-8 border border-border bg-secondary flex items-center justify-center text-[#ea580c]">
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b-2 border-border">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-8 w-8 shrink-0 border border-border bg-secondary flex items-center justify-center text-[#ea580c]">
             <Shield className="h-4 w-4" />
           </div>
-          <div>
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground block">
               {"// ON_CHAIN_DEFENSE"}
             </span>
-            <p className="text-xl sm:text-2xl font-bold tracking-tight text-foreground mt-0.5">
+            <p className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-foreground mt-0.5 truncate">
               DEMOVAULT_CIRCUIT_BREAKER
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 px-2.5 py-1 border border-border bg-secondary text-[11px] font-bold text-emerald-400">
+        <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 border border-border bg-secondary text-[10px] sm:text-[11px] font-bold text-emerald-400">
           <span>[SYSTEM_ARMED]</span>
         </div>
       </div>
@@ -72,7 +72,7 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
           return (
             <div
               key={item.id}
-              className={`p-3.5 border transition-all ${
+              className={`p-3 sm:p-3.5 border transition-all ${
                 isTriggered
                   ? "border-[#ea580c] bg-[#ea580c]/5"
                   : isArmed
@@ -80,10 +80,10 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
                   : "border-border bg-background/50"
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-3">
+                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
                   <div
-                    className={`mt-0.5 h-6 w-6 border flex items-center justify-center text-xs ${
+                    className={`mt-0.5 h-6 w-6 shrink-0 border flex items-center justify-center text-xs ${
                       isTriggered
                         ? "border-[#ea580c] bg-[#ea580c] text-background font-bold"
                         : "border-border bg-secondary text-foreground"
@@ -91,13 +91,13 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
                   >
                     {isTriggered ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-xs font-bold text-foreground uppercase tracking-wider">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                      <p className="text-xs font-bold text-foreground uppercase tracking-wider break-words">
                         {item.title}
                       </p>
                       <span
-                        className={`text-[9px] px-1 border uppercase font-bold ${
+                        className={`text-[9px] px-1 border uppercase font-bold shrink-0 ${
                           isTriggered
                             ? "border-[#ea580c] text-[#ea580c]"
                             : isArmed
@@ -114,7 +114,7 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
                   </div>
                 </div>
 
-                <span className="text-[10px] text-muted-foreground uppercase whitespace-nowrap">
+                <span className="text-[10px] text-muted-foreground uppercase sm:whitespace-nowrap shrink-0">
                   {item.threshold}
                 </span>
               </div>
@@ -129,7 +129,7 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
                     style={{ width: `${item.progress}%` }}
                   />
                 </div>
-                <span className="text-[10px] font-bold text-foreground">{item.progress}%</span>
+                <span className="text-[10px] font-bold text-foreground shrink-0">{item.progress}%</span>
               </div>
             </div>
           );
@@ -140,7 +140,7 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
       <div className="pt-2">
         <Link
           href="/vault"
-          className="flex items-center justify-between p-2.5 border border-dashed border-border bg-muted/10 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-foreground transition-all"
+          className="flex flex-wrap items-center justify-between gap-2 p-2.5 border border-dashed border-border bg-muted/10 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-foreground transition-all"
         >
           <span>INTERACT_WITH_DEMOVAULT &rarr;</span>
           <span className="text-[#ea580c] font-bold">[CONTRACT_CONTROLS]</span>

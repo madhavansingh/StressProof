@@ -81,21 +81,21 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
       {/* Top Back Link */}
       <Link
         href="/claims"
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground uppercase tracking-widest"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground uppercase tracking-widest transition-colors"
       >
         <ArrowLeft className="h-3.5 w-3.5" />
-        <span>&larr; BACK_TO_CLAIMS_REGISTRY</span>
+        <span>BACK_TO_CLAIMS_REGISTRY</span>
       </Link>
 
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-border pb-6">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground uppercase break-words">
               CLAIM_DOSSIER_#{claim.id}
             </h1>
             <span
-              className={`px-2 py-0.5 border text-[10px] font-bold uppercase tracking-wider ${
+              className={`px-2 py-0.5 border text-[10px] font-bold uppercase tracking-wider shrink-0 ${
                 claim.status === "Finalized"
                   ? "border-emerald-500 bg-emerald-950/40 text-emerald-400"
                   : claim.status === "Rejected"
@@ -106,14 +106,14 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
               [{claim.status}]
             </span>
           </div>
-          <p className="text-xs text-muted-foreground mt-1 uppercase">
+          <p className="text-xs text-muted-foreground mt-1 uppercase break-all">
             MARKET: {claim.marketId} &bull; ATTESTER: {claim.attester}
           </p>
         </div>
 
         <button
           onClick={handleApplyToVault}
-          className="px-4 py-2 bg-foreground text-background text-xs font-bold uppercase tracking-wider hover:bg-[#ea580c] hover:text-white transition-all border border-foreground"
+          className="w-full sm:w-auto px-4 py-2 bg-foreground text-background text-xs font-bold uppercase tracking-wider hover:bg-[#ea580c] hover:text-white transition-all border border-foreground shrink-0"
         >
           APPLY_TO_DEMOVAULT
         </button>

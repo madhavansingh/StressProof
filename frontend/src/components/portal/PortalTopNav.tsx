@@ -13,11 +13,12 @@ export function PortalTopNav() {
   };
 
   return (
-    <header className="h-16 px-4 sm:px-6 flex items-center justify-between bg-card border-b-2 border-border sticky top-0 z-40 font-mono shrink-0">
-      <div />
+    <header className="h-16 px-3.5 sm:px-6 flex items-center justify-between bg-card border-b-2 border-border sticky top-0 z-40 font-mono shrink-0">
+      {/* Spacer for mobile drawer button */}
+      <div className="w-10 lg:hidden shrink-0" />
 
       {/* Right Action Icons & Badges */}
-      <div className="flex items-center gap-2 sm:gap-3">
+      <div className="flex items-center gap-2 sm:gap-3 ml-auto">
         {/* Live Oracle Telemetry Beacon */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1 border border-border bg-background text-xs">
           <span className="h-2 w-2 bg-[#ea580c] animate-blink" />
