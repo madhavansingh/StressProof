@@ -13,6 +13,10 @@ def replay(case_file: Dict[str, Any]) -> ReplayResult:
     """
     Pure deterministic liquidation replay.
     No I/O, no clock, no floats, integer floor division only.
+
+    Precondition: validate() returned no V-01..V-13 violations for this case file.
+    replay() does not re-check the domain; callers outside verdict.evaluate() must validate first.
+    Every returned total and per-account amount is a Python int.
     """
     asset_name = case_file["scenario"]["asset"]
     asset_data = case_file["snapshot"]["assets"][asset_name]
