@@ -1,10 +1,23 @@
-import type { Metadata } from "next";
-import { Navbar } from "@/components/layout/Navbar";
-import "@/app/globals.css";
+import type { Metadata, Viewport } from "next";
+import { JetBrains_Mono } from "next/font/google";
+import { MainContentWrapper } from "@/components/layout/MainContentWrapper";
+import "./globals.css";
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+});
 
 export const metadata: Metadata = {
-  title: "StressProof",
-  description: "An open, challengeable layer for AI-generated lending-market risk claims.",
+  title: "Superconscious | StressProof — Brutalist Risk Settlement Layer",
+  description:
+    "An open, challengeable layer for AI-generated lending-market risk claims. Deterministic Wasm replayer, bonded optimistic attestations, and automated vault defense.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f0f0f",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -13,10 +26,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className="min-h-screen bg-zinc-50 font-sans text-zinc-900 antialiased dark:bg-zinc-900 dark:text-zinc-50">
-        <Navbar />
-        <main className="container mx-auto p-4 md:p-6">{children}</main>
+    <html lang="en" className={`${jetbrainsMono.variable} dark`}>
+      <body className="min-h-screen bg-background text-foreground font-mono antialiased selection:bg-[#ea580c] selection:text-white">
+        <MainContentWrapper>{children}</MainContentWrapper>
       </body>
     </html>
   );
