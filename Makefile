@@ -6,6 +6,11 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
+# Tool paths. Override when they are not on PATH, e.g.
+#   make deploy-local FORGE=~/.foundry/bin/forge GIT=/usr/bin/git
+FORGE ?= forge
+GIT ?= git
+
 .PHONY: help setup test clean fork pin extract normalize sweep chain deploy-local deploy-testnet abis backend watcher attest evil resolve e2e web
 
 help: ## Show this help message
@@ -57,14 +62,17 @@ sweep: ## Step 4b: Run scenario sweep to identify non-zero bad debt R and select
 chain: ## Run standalone local Anvil testnet node on port 8546 for E2E testing
 	anvil --port 8546
 
-deploy-local: ## Deploy StressRegistry, DemoVault, MockLendingMarket to local Anvil
-	cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url http://127.0.0.1:8546 --broadcast
+# scripts/deploy.sh loads .env, deploys, then writes deployments/<chainId>.json only from
+# confirmed receipts and on-chain reads. A failed deploy leaves the existing file untouched.
+deploy-local: ## Deploy to local Anvil; writes deployments/31337.json from confirmed receipts
+	FORGE="$(FORGE)" GIT="$(GIT)" $(SHELL) scripts/deploy.sh local
 
-deploy-testnet: ## Deploy contracts to Base Sepolia (or configured TESTNET_RPC_URL)
-	cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url $$TESTNET_RPC_URL --broadcast --verify
+deploy-testnet: ## Deploy to Base Sepolia; needs a clean tree; writes deployments/84532.json from receipts
+	FORGE="$(FORGE)" GIT="$(GIT)" $(SHELL) scripts/deploy.sh testnet
 
-abis: ## Export compiled contract ABIs to frontend and agent packages
-	bash scripts/export_abis.sh
+abis: ## Build contracts, then export ABIs to frontend and agent packages
+	cd contracts && $(FORGE) build
+	$(SHELL) scripts/export_abis.sh
 
 # --- Backend & Agent Run Targets ---
 
