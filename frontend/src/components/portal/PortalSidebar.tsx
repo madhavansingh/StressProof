@@ -61,15 +61,17 @@ export function PortalSidebar() {
 
   return (
     <>
-      {/* Mobile Drawer Button */}
-      <button
-        type="button"
-        aria-label="Toggle Navigation Menu"
-        onClick={() => setIsMobileOpen(!isMobileOpen)}
-        className="lg:hidden fixed top-4 left-4 z-[70] p-2 bg-card border-2 border-foreground text-foreground shadow-sm hover:bg-foreground hover:text-background transition-colors"
-      >
-        {isMobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
+      {/* Mobile Drawer Open Button */}
+      {!isMobileOpen && (
+        <button
+          type="button"
+          aria-label="Open Navigation Menu"
+          onClick={() => setIsMobileOpen(true)}
+          className="lg:hidden fixed top-3.5 left-4 z-[50] p-2 bg-card border-2 border-foreground text-foreground shadow-sm hover:bg-foreground hover:text-background transition-colors"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+      )}
 
       {/* Mobile Overlay */}
       {isMobileOpen && (
@@ -82,13 +84,13 @@ export function PortalSidebar() {
       {/* Brutalist Sidebar Shell */}
       <aside
         className={`
-          fixed inset-y-0 left-0 z-[66] w-64 h-screen bg-card border-r-2 border-border flex flex-col justify-between transition-transform duration-200 ease-in-out font-mono shrink-0 select-none
+          fixed inset-y-0 left-0 z-[66] w-72 h-screen bg-card border-r-2 border-border flex flex-col justify-between transition-transform duration-200 ease-in-out font-mono shrink-0 select-none
           lg:translate-x-0 lg:static lg:h-screen lg:shrink-0
           ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
         `}
       >
         <div className="flex flex-col flex-1 min-h-0 overflow-y-auto">
-          {/* Brand Header */}
+          {/* Brand Header with Close Button on Right */}
           <div className="h-16 px-5 flex items-center justify-between border-b-2 border-border bg-card shrink-0">
             <Link
               href="/"
@@ -104,6 +106,16 @@ export function PortalSidebar() {
                 </span>
               </div>
             </Link>
+
+            {/* Mobile Close Button on the Right */}
+            <button
+              type="button"
+              aria-label="Close Navigation Menu"
+              onClick={() => setIsMobileOpen(false)}
+              className="lg:hidden p-1.5 border border-border text-muted-foreground hover:text-foreground hover:border-foreground hover:bg-secondary transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
           {/* Section Marker */}
@@ -115,7 +127,7 @@ export function PortalSidebar() {
           </div>
 
           {/* Navigation Links */}
-          <nav className="p-3 space-y-1">
+          <nav className="p-3 space-y-1.5">
             {navItems.map((item) => {
               const isActive = pathname === item.href;
               const Icon = item.icon;
@@ -126,7 +138,7 @@ export function PortalSidebar() {
                   href={item.href}
                   onClick={() => setIsMobileOpen(false)}
                   className={`
-                    group flex items-center justify-between px-3.5 py-2.5 text-xs font-mono tracking-wider transition-all border
+                    group flex items-center justify-between gap-3 px-3.5 py-2.5 text-xs font-mono tracking-wider transition-all border
                     ${
                       isActive
                         ? "bg-foreground text-background font-bold border-foreground shadow-[2px_2px_0px_0px_#ea580c]"
@@ -134,12 +146,12 @@ export function PortalSidebar() {
                     }
                   `}
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon className={`h-4 w-4 ${isActive ? "text-[#ea580c]" : "group-hover:text-foreground"}`} />
-                    <span>{item.label}</span>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <Icon className={`h-4 w-4 shrink-0 ${isActive ? "text-[#ea580c]" : "group-hover:text-foreground"}`} />
+                    <span className="truncate">{item.label}</span>
                   </div>
                   <span
-                    className={`text-[9px] px-1.5 py-0.5 border ${
+                    className={`shrink-0 text-[9px] px-1.5 py-0.5 border ${
                       isActive
                         ? "border-background text-background bg-foreground/10"
                         : "border-border text-muted-foreground group-hover:text-foreground"

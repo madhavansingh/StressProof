@@ -39,11 +39,11 @@ export default function VaultPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-border pb-6">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground uppercase break-words">
               DEMOVAULT_RISK_CONTROLS
             </h1>
-            <span className="px-2 py-0.5 border border-border bg-secondary text-foreground text-[10px] font-bold uppercase tracking-wider">
+            <span className="px-2 py-0.5 border border-border bg-secondary text-foreground text-[10px] font-bold uppercase tracking-wider shrink-0">
               DEMOVAULT.SOL
             </span>
           </div>
@@ -54,7 +54,7 @@ export default function VaultPage() {
 
         <button
           onClick={() => setBorrowPaused(!borrowPaused)}
-          className={`px-4 py-2 text-xs font-bold uppercase tracking-wider border-2 transition-all ${
+          className={`w-full sm:w-auto px-4 py-2 text-xs font-bold uppercase tracking-wider border-2 transition-all shrink-0 ${
             borrowPaused
               ? "border-emerald-500 bg-emerald-950/60 text-emerald-300"
               : "border-rose-500 bg-rose-950/60 text-rose-300"

@@ -41,15 +41,15 @@ export default function DashboardMarketsPage() {
   return (
     <div className="space-y-6 font-mono">
       {/* Top Banner Notice */}
-      <div className="border border-border bg-card p-3 text-xs text-muted-foreground flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 bg-[#ea580c] animate-blink" />
-          <span className="text-foreground font-bold">[FORK_VERIFIED]</span>
-          <span>
+      <div className="border border-border bg-card p-3 text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="h-2 w-2 bg-[#ea580c] animate-blink shrink-0" />
+          <span className="text-foreground font-bold shrink-0">[FORK_VERIFIED]</span>
+          <span className="truncate sm:overflow-visible sm:whitespace-normal">
             Ethereum Mainnet block #{market.forkBlock} replayed deterministically via static replayer.
           </span>
         </div>
-        <span className="hidden sm:inline text-[10px] text-muted-foreground uppercase">
+        <span className="hidden sm:inline text-[10px] text-muted-foreground uppercase shrink-0">
           PROTOCOL_REV: 0x82a9
         </span>
       </div>
@@ -57,11 +57,11 @@ export default function DashboardMarketsPage() {
       {/* Header & Page Title */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-border pb-6">
         <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground uppercase">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold tracking-tight text-foreground uppercase break-words">
               DEFI_RISK_COMMAND_CENTER
             </h1>
-            <span className="px-2 py-0.5 border border-emerald-500 bg-emerald-950/40 text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+            <span className="px-2 py-0.5 border border-emerald-500 bg-emerald-950/40 text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0">
               <span className="h-1.5 w-1.5 bg-emerald-400 animate-pulse" />
               LIVE_FORK
             </span>
@@ -71,12 +71,12 @@ export default function DashboardMarketsPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
           <Link
             href="/stress"
-            className="group flex items-center gap-0 bg-foreground text-background text-xs font-mono tracking-wider uppercase border border-foreground hover:bg-[#ea580c] hover:border-[#ea580c] hover:text-white transition-all shadow-[3px_3px_0px_0px_hsl(var(--border))]"
+            className="group flex items-center justify-center sm:justify-start w-full sm:w-auto gap-0 bg-foreground text-background text-xs font-mono tracking-wider uppercase border border-foreground hover:bg-[#ea580c] hover:border-[#ea580c] hover:text-white transition-all shadow-[3px_3px_0px_0px_hsl(var(--border))]"
           >
-            <span className="flex items-center justify-center w-8 h-8 bg-[#ea580c] text-background group-hover:bg-foreground group-hover:text-background transition-colors">
+            <span className="flex items-center justify-center w-8 h-8 bg-[#ea580c] text-background group-hover:bg-foreground group-hover:text-background transition-colors shrink-0">
               <ArrowUpRight className="h-4 w-4" />
             </span>
             <span className="px-3.5 py-1.5 font-bold">RUN_SIMULATION</span>
@@ -85,9 +85,9 @@ export default function DashboardMarketsPage() {
       </div>
 
       {/* Top 4 KPI Cards (Brutalist Style) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         {/* Card 1: Monitored TVL */}
-        <div className="bg-card border-2 border-border p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
+        <div className="bg-card border-2 border-border p-4 sm:p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-widest">
               // 01 MONITORED_TVL
@@ -103,7 +103,7 @@ export default function DashboardMarketsPage() {
         </div>
 
         {/* Card 2: WETH Base Price */}
-        <div className="bg-card border-2 border-border p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
+        <div className="bg-card border-2 border-border p-4 sm:p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-widest">
               // 02 WETH_ORACLE
@@ -120,7 +120,7 @@ export default function DashboardMarketsPage() {
         </div>
 
         {/* Card 3: Claimed Bad Debt */}
-        <div className="bg-card border-2 border-border p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
+        <div className="bg-card border-2 border-border p-4 sm:p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-widest">
               // 03 RESIDUAL_BAD_DEBT
@@ -136,7 +136,7 @@ export default function DashboardMarketsPage() {
         </div>
 
         {/* Card 4: Circuit Breaker Max LTV */}
-        <div className="bg-card border-2 border-border p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
+        <div className="bg-card border-2 border-border p-4 sm:p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-widest">
               // 04 VAULT_DEFENSE_LTV
@@ -156,38 +156,20 @@ export default function DashboardMarketsPage() {
       </div>
 
       {/* Main 2-Column Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left Column: Protocol Risk Accounts (2 Cols) */}
-        <div className="lg:col-span-2 bg-card border-2 border-border p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              BORROWER_RISK_ACCOUNTS &amp; WATERFALL
-            </h2>
-            <span className="text-[10px] text-muted-foreground uppercase">AAVE_V3_FORK</span>
-          </div>
+        <div className="xl:col-span-2 bg-card border-2 border-border p-4 sm:p-5">
           <RiskAccountsWidget />
         </div>
 
         {/* Right Column: Recent Attestations & Registry */}
-        <div className="bg-card border-2 border-border p-5 space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-              ATTESTATIONS_STREAM
-            </h2>
-            <span className="text-[10px] text-muted-foreground uppercase">120S_WINDOW</span>
-          </div>
+        <div className="bg-card border-2 border-border p-4 sm:p-5">
           <RecentAttestationsWidget />
         </div>
       </div>
 
       {/* Bottom Section: Vault Defense Automation */}
-      <div className="bg-card border-2 border-border p-5 space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-foreground">
-            DEMOVAULT_CIRCUIT_BREAKER_AUTOMATION
-          </h2>
-          <span className="text-[10px] text-muted-foreground uppercase">DEMOVAULT.SOL</span>
-        </div>
+      <div className="bg-card border-2 border-border p-4 sm:p-5">
         <VaultDefenseWidget />
       </div>
     </div>
