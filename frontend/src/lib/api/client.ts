@@ -1,5 +1,9 @@
 /**
  * Backend API client for StressProof.
+ *
+ * Direct reads (GET) connect straight to the public backend URL.
+ * Authenticated writes (POST) route through the Next.js API server proxy
+ * (/api/stress/run) to prevent leaking the backend write token to browser bundles.
  */
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
@@ -11,20 +15,22 @@ export async function fetchDatasets() {
 }
 
 export async function runStressTest(datasetId: string, shockBps: number, rationale?: string) {
-  const res = await fetch(`${BACKEND_URL}/stress/run`, {
+  // Routes to the Next.js server route handler (/api/stress/run)
+  // which securely appends the private API_WRITE_TOKEN server-side.
+  const res = await fetch("/api/stress/run", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.NEXT_PUBLIC_API_WRITE_TOKEN || "stressproof_dev_token_secret"}`,
     },
     body: JSON.stringify({
       datasetId,
       scenario: { asset: "WETH", shockBps },
-      agentRationale: rationale,
+      agentRationale: rationale || "Phase 1 fixed scenario.",
     }),
   });
+
   if (!res.ok) {
-    const err = await res.json();
+    const err = await res.json().catch(() => ({ detail: "Stress test execution failed" }));
     throw new Error(err.detail || "Stress test execution failed");
   }
   return res.json();
