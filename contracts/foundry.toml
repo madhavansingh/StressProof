@@ -7,10 +7,11 @@ evm_version = "cancun"
 optimizer = true
 optimizer_runs = 200
 remappings = ["forge-std/=lib/forge-std/src/"]
-# Scripts may read the project, and may write only the shared deployments folder (plan §8.7).
+# Forge may read the project and the deployments folder, and write nothing.
+# deployments/<chainId>.json is written by scripts/deploy.sh only after confirmed receipts.
 fs_permissions = [
     { access = "read", path = "./" },
-    { access = "write", path = "../deployments" },
+    { access = "read", path = "../deployments" },
 ]
 
 [fuzz]
