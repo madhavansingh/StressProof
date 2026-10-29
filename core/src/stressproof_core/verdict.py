@@ -20,6 +20,21 @@ from .validation import validate
 _REQUIRED_ONCHAIN = ("evidenceHash", "marketId", "claimedResidualBadDebt")
 
 
+class VerdictInvariantError(RuntimeError):
+    """An internal verdict rule was broken; never a property of the input bytes."""
+
+
+def wrong_result_counter(recomputed_residual: int, claimed: int) -> int:
+    """
+    The counter-value for a WRONG_RESULT challenge. StressRegistry.challenge reverts with
+    CounterEqualsClaim when they are equal, so equality is a bug and fails loudly. An explicit
+    check, not an assert: `python -O` strips asserts.
+    """
+    if recomputed_residual == claimed:
+        raise VerdictInvariantError("WRONG_RESULT counter equals the on-chain claim")
+    return recomputed_residual
+
+
 def _check_onchain(onchain: Dict[str, Any]) -> None:
     if not isinstance(onchain, dict):
         raise TypeError("onchain must be a dict")
@@ -91,8 +106,7 @@ def evaluate(raw_bytes: bytes, onchain: Dict[str, Any]) -> Evaluation:
     recomputed_residual = result.residual_bad_debt_usd8
 
     if recomputed_residual != claimed:
-        verdict, counter = VERDICT_WRONG_RESULT, recomputed_residual
-        assert counter != claimed
+        verdict, counter = VERDICT_WRONG_RESULT, wrong_result_counter(recomputed_residual, claimed)
     elif v14_failed:
         verdict, counter = VERDICT_EVIDENCE_INVALID, 0
     else:

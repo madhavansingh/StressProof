@@ -22,6 +22,10 @@ FAKE_DB_URL = "postgresql://user:not-a-real-password@127.0.0.1:1/none"
 
 
 def settings(tmp_path, **values):
+    # Pass DATABASE_URL explicitly: other test packages may have loaded a developer's .env into
+    # os.environ (pipeline CLIs call load_dotenv), and an inherited value would switch to Postgres.
+    values.setdefault("DATABASE_URL", "")
+    values.setdefault("CORS_ORIGINS", Settings.model_fields["CORS_ORIGINS"].default)
     return Settings(_env_file=None, DATA_DIR=str(tmp_path / "data"), GIT_COMMIT="0" * 40, **values)
 
 
@@ -165,3 +169,29 @@ def test_concurrent_appends_with_polling_reader_skip_nothing(pg_schema):
     assert len(set(appended)) == 80
     assert sorted(seen) == sorted(appended), f"poller missed {sorted(set(appended) - set(seen))}"
     assert seen == sorted(seen)
+
+
+# --- B3: CORS defaults cover both local frontend addresses ------------------------------------
+
+@pytest.mark.parametrize("origin", ["http://localhost:3000", "http://127.0.0.1:3000"])
+def test_default_cors_allows_both_local_origins(tmp_path, monkeypatch, origin):
+    monkeypatch.delenv("CORS_ORIGINS", raising=False)
+    with TestClient(create_app(settings(tmp_path))) as c:
+        pre = c.options("/feed", headers={"Origin": origin, "Access-Control-Request-Method": "GET"})
+        assert pre.status_code == 200
+        assert pre.headers.get("access-control-allow-origin") == origin
+        assert c.get("/health", headers={"Origin": origin}).headers.get("access-control-allow-origin") == origin
+
+
+def test_default_cors_still_refuses_other_origins(tmp_path, monkeypatch):
+    monkeypatch.delenv("CORS_ORIGINS", raising=False)
+    with TestClient(create_app(settings(tmp_path))) as c:
+        for origin in ("http://localhost:3001", "https://evil.example", "http://127.0.0.1:3000.evil.example"):
+            assert "access-control-allow-origin" not in c.get("/health", headers={"Origin": origin}).headers
+
+
+def test_explicit_cors_origins_override_the_default(tmp_path):
+    with TestClient(create_app(settings(tmp_path, CORS_ORIGINS="https://stress-proof.vercel.app"))) as c:
+        assert c.get("/health", headers={"Origin": "https://stress-proof.vercel.app"}).headers.get(
+            "access-control-allow-origin") == "https://stress-proof.vercel.app"
+        assert "access-control-allow-origin" not in c.get("/health", headers={"Origin": "http://localhost:3000"}).headers
