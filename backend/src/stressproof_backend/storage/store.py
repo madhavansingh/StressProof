@@ -1,76 +1,117 @@
 """
 Content-addressed raw byte storage.
 Matches implementationplan.md §14 & §16.1.
+
+Files are named by the keccak256 of their exact bytes, written atomically, and never
+mutated or deleted. Readers always hash what they fetch, so the store is not trusted.
 """
 
 import os
 import re
+import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
+
 from stressproof_core.hashing import keccak256_hex
 
 HASH_REGEX = re.compile(r"^0x[0-9a-f]{64}$")
 
+CASE_FILES = "case-files"
+REPLAY_REPORTS = "replay-reports"
+REPLAY_OUTPUTS = "replay_outputs"
+
+
+class StoreConflict(Exception):
+    """An existing file under a hash does not hold the bytes for that hash (corruption)."""
+
+
+@dataclass(frozen=True)
+class PutResult:
+    hash: str
+    created: bool
+
+
+def atomic_write(path: Path, data: bytes) -> None:
+    """Unique temp file in the destination directory, fsync, os.replace; temp removed on failure."""
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(data)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_name, path)
+    except BaseException:
+        try:
+            os.unlink(tmp_name)
+        except FileNotFoundError:
+            pass
+        raise
+
 
 class ContentStore:
-    def __init__(self, base_dir: str):
+    """Filesystem backend (default when DATABASE_URL is unset). Same async interface as PostgresStore."""
+
+    kind = "filesystem"
+
+    def __init__(self, base_dir: Path):
         self.base_dir = Path(base_dir)
-        self.case_files_dir = self.base_dir / "case-files"
-        self.replay_reports_dir = self.base_dir / "replay-reports"
+        self._dirs = {
+            CASE_FILES: self.base_dir / CASE_FILES,
+            REPLAY_REPORTS: self.base_dir / REPLAY_REPORTS,
+            REPLAY_OUTPUTS: self.base_dir / REPLAY_OUTPUTS,
+        }
+        for d in self._dirs.values():
+            d.mkdir(parents=True, exist_ok=True)
 
-        self.case_files_dir.mkdir(parents=True, exist_ok=True)
-        self.replay_reports_dir.mkdir(parents=True, exist_ok=True)
+    async def open(self) -> None:
+        self.check_writable()
 
-    def put_case_file(self, raw_bytes: bytes) -> str:
-        """
-        Stores canonical case file bytes addressed by keccak256 hash.
-        """
-        h = keccak256_hex(raw_bytes)
-        dest = self.case_files_dir / f"{h}.json"
+    async def close(self) -> None:
+        return None
+
+    def check_writable(self) -> None:
+        """Fail at startup, not on the first claim, if DATA_DIR cannot be written."""
+        for d in self._dirs.values():
+            fd, probe = tempfile.mkstemp(dir=d, prefix=".write-probe.")
+            os.close(fd)
+            os.unlink(probe)
+
+    def _put(self, kind: str, raw: bytes, suffix: str = ".json", name: Optional[str] = None) -> PutResult:
+        h = keccak256_hex(raw)
+        dest = self._dirs[kind] / f"{name or h}{suffix}"
+        if dest.exists():
+            if dest.read_bytes() != raw:
+                raise StoreConflict(f"{dest} exists with different bytes")
+            return PutResult(h, created=False)
+        atomic_write(dest, raw)
+        return PutResult(h, created=True)
+
+    def _get(self, kind: str, h: str) -> Optional[bytes]:
+        if not isinstance(h, str) or not HASH_REGEX.match(h):
+            return None
+        target = self._dirs[kind] / f"{h}.json"
+        try:
+            return target.read_bytes()
+        except FileNotFoundError:
+            return None
+
+    async def put_case_file(self, raw: bytes) -> PutResult:
+        return self._put(CASE_FILES, raw)
+
+    async def get_case_file(self, h: str) -> Optional[bytes]:
+        return self._get(CASE_FILES, h)
+
+    async def put_replay_report(self, raw: bytes) -> PutResult:
+        return self._put(REPLAY_REPORTS, raw)
+
+    async def get_replay_report(self, h: str) -> Optional[bytes]:
+        return self._get(REPLAY_REPORTS, h)
+
+    async def put_replay_outputs(self, evidence_hash: str, raw: bytes) -> None:
+        """Per-account outcomes (plan §8.5), keyed by the case file's evidenceHash; derived data."""
+        if not HASH_REGEX.match(evidence_hash):
+            raise ValueError("malformed evidence hash")
+        dest = self._dirs[REPLAY_OUTPUTS] / f"{evidence_hash}.jsonl"
         if not dest.exists():
-            tmp = self.case_files_dir / f"{h}.json.tmp"
-            with open(tmp, "wb") as f:
-                f.write(raw_bytes)
-                f.flush()
-                os.fsync(f.fileno())
-            tmp.rename(dest)
-        return h
-
-    def get_case_file(self, h: str) -> Optional[bytes]:
-        """
-        Retrieves raw bytes for case file hash.
-        """
-        if not HASH_REGEX.match(h):
-            return None
-        target = self.case_files_dir / f"{h}.json"
-        if not target.exists():
-            return None
-        with open(target, "rb") as f:
-            return f.read()
-
-    def put_replay_report(self, raw_bytes: bytes) -> str:
-        """
-        Stores canonical replay report bytes addressed by keccak256 hash.
-        """
-        h = keccak256_hex(raw_bytes)
-        dest = self.replay_reports_dir / f"{h}.json"
-        if not dest.exists():
-            tmp = self.replay_reports_dir / f"{h}.json.tmp"
-            with open(tmp, "wb") as f:
-                f.write(raw_bytes)
-                f.flush()
-                os.fsync(f.fileno())
-            tmp.rename(dest)
-        return h
-
-    def get_replay_report(self, h: str) -> Optional[bytes]:
-        """
-        Retrieves raw bytes for replay report hash.
-        """
-        if not HASH_REGEX.match(h):
-            return None
-        target = self.replay_reports_dir / f"{h}.json"
-        if not target.exists():
-            return None
-        with open(target, "rb") as f:
-            return f.read()
+            atomic_write(dest, raw)
