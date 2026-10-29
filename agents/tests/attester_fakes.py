@@ -47,6 +47,9 @@ class FakeBackend:
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         path = request.url.path
+        if request.method == "GET" and path.startswith("/replay-reports/"):
+            body = self.reports.get(path.rsplit("/", 1)[-1])
+            return httpx.Response(200, content=body) if body is not None else httpx.Response(404)
         if request.method == "GET" and path.startswith("/case-files/"):
             h = path.rsplit("/", 1)[-1]
             body = self.serve_override.get(h, self.store.get(h))
