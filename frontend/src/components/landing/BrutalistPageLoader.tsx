@@ -75,34 +75,11 @@ export function BrutalistPageLoader({ onComplete }: BrutalistPageLoaderProps) {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, y: -40, filter: "blur(8px)" }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed inset-0 z-[100] bg-background text-foreground font-mono flex flex-col justify-between p-6 sm:p-12 select-none border-b-4 border-foreground"
+          onClick={handleSkip}
+          className="fixed inset-0 z-[100] bg-background text-foreground font-mono flex items-center justify-center p-6 sm:p-12 select-none border-b-4 border-foreground cursor-pointer"
         >
-          {/* Top Bar Diagnostics */}
-          <div className="flex items-center justify-between border-b-2 border-border pb-4">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-[#ea580c] flex items-center justify-center text-white font-bold text-xs tracking-wider shadow-[3px_3px_0px_0px_#ffffff]">
-                SP
-              </div>
-              <div>
-                <span className="text-xs font-bold tracking-widest uppercase text-foreground block">
-                  STRESSPROOF_BOOT_OS // SYSTEM_INITIALIZATION
-                </span>
-                <span className="text-[10px] text-muted-foreground uppercase">
-                  OPTIMISTIC RISK SETTLEMENT LAYER
-                </span>
-              </div>
-            </div>
-
-            <button
-              onClick={handleSkip}
-              className="text-[10px] uppercase font-bold text-muted-foreground hover:text-foreground border border-border px-3 py-1 bg-card hover:border-foreground transition-all cursor-pointer"
-            >
-              [CLICK_OR_PRESS_SPACE_TO_SKIP &rarr;]
-            </button>
-          </div>
-
           {/* Central Diagnostic Console */}
-          <div className="max-w-2xl mx-auto w-full my-auto space-y-6">
+          <div className="max-w-2xl mx-auto w-full space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Terminal className="h-4 w-4 text-[#ea580c] animate-pulse" />
@@ -166,16 +143,9 @@ export function BrutalistPageLoader({ onComplete }: BrutalistPageLoaderProps) {
               </div>
             </div>
           </div>
-
-          {/* Bottom Bar Info */}
-          <div className="flex flex-col sm:flex-row items-center justify-between text-[10px] uppercase text-muted-foreground border-t-2 border-border pt-4">
-            <span>&copy; 2026 SUPERCONSCIOUS / STRESSPROOF</span>
-            <span className="text-foreground font-bold mt-1 sm:mt-0">
-              PRESS ANYWHERE TO ENTER
-            </span>
-          </div>
         </motion.div>
       )}
     </AnimatePresence>
   );
 }
+
