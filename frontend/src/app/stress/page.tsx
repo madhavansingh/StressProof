@@ -6,7 +6,8 @@ import { runStressTest, fetchDatasets } from "@/lib/api/client";
 import { formatUsd8, formatAddress } from "@/lib/format";
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
-import { parseEventLogs, formatEther } from "viem";
+import { formatEther } from "viem";
+import { extractPostedClaim } from "@/lib/web3/claimPosted";
 import {
   Zap,
   AlertTriangle,
@@ -40,6 +41,7 @@ export default function StressPage() {
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [publishedClaimId, setPublishedClaimId] = useState<string | null>(null);
+  const [publishFailure, setPublishFailure] = useState<string | null>(null);
 
   // Contract write hook for postClaim
   const {
@@ -69,23 +71,24 @@ export default function StressPage() {
       });
   }, []);
 
-  // When postClaim receipt confirms, extract claimId from ClaimPosted event log
+  // When the postClaim receipt confirms, take the claim id from the registry's ClaimPosted event
   useEffect(() => {
-    if (receipt) {
-      try {
-        const logs = parseEventLogs({
-          abi: config.registry.abi,
-          eventName: "ClaimPosted",
-          logs: receipt.logs,
-        });
-        if (logs.length > 0 && logs[0].args?.claimId !== undefined) {
-          setPublishedClaimId(logs[0].args.claimId.toString());
-        }
-      } catch (err) {
-        console.warn("Could not decode ClaimPosted log:", err);
+    if (!receipt || !result) return;
+    try {
+      const posted = extractPostedClaim(receipt, config.registry.address, result.evidenceHash);
+      if (posted.ok) {
+        setPublishedClaimId(posted.claimId.toString());
+        setPublishFailure(null);
+      } else {
+        setPublishedClaimId(null);
+        setPublishFailure(posted.reason);
       }
+    } catch (err) {
+      console.warn("Could not decode the postClaim receipt:", err);
+      setPublishedClaimId(null);
+      setPublishFailure("Could not decode the transaction receipt.");
     }
-  }, [receipt, config]);
+  }, [receipt, config, result]);
 
   const activeDataset = datasets.find((d) => d.datasetId === selectedDataset) || datasets[0];
   const activeDataClass = result?.dataClass || activeDataset?.dataClass || "SYNTHETIC";
@@ -94,6 +97,7 @@ export default function StressPage() {
     setLoading(true);
     setError(null);
     setPublishedClaimId(null);
+    setPublishFailure(null);
     resetPost();
 
     try {
@@ -110,6 +114,7 @@ export default function StressPage() {
     if (!result) return;
     resetPost();
     setPublishedClaimId(null);
+    setPublishFailure(null);
 
     const residualBadDebt = BigInt(result.results.residualBadDebtUsd8);
 
@@ -321,17 +326,30 @@ export default function StressPage() {
           </div>
 
           {postTxHash && (
-            <div className="p-4 border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 text-xs space-y-2">
+            <div
+              className={`p-4 border-2 text-xs space-y-2 ${
+                publishFailure
+                  ? "border-rose-500 bg-rose-950/40 text-rose-300"
+                  : "border-emerald-500 bg-emerald-950/40 text-emerald-300"
+              }`}
+            >
               <div className="flex items-center gap-2 font-bold uppercase">
-                {isPostConfirming ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
-                ) : (
+                {publishFailure ? (
+                  <AlertTriangle className="h-4 w-4 text-rose-400" />
+                ) : publishedClaimId ? (
                   <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                ) : (
+                  <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
                 )}
                 <span>
-                  {isPostConfirming ? "TRANSACTION_CONFIRMING_ON_CHAIN" : "CLAIM_POSTED_ON_CHAIN"}
+                  {publishFailure
+                    ? "CLAIM_NOT_CONFIRMED"
+                    : publishedClaimId
+                      ? "CLAIM_POSTED_ON_CHAIN"
+                      : "TRANSACTION_CONFIRMING_ON_CHAIN"}
                 </span>
               </div>
+              {publishFailure && <p className="uppercase">{publishFailure}</p>}
               <p className="break-all font-mono">
                 TX_HASH: <code>{postTxHash}</code>
               </p>
