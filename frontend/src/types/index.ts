@@ -53,12 +53,29 @@ export interface CaseFile {
   results: ReplayMetrics;
 }
 
+export type FeedActor =
+  | "attester"
+  | "malicious_attester"
+  | "malicious"
+  | "watcher"
+  | "resolver"
+  | "backend"
+  | "ui"
+  | "user"
+  | string;
+
 export interface FeedEntry {
   seq: number;
   ts: string;
-  actor: "attester" | "watcher" | "resolver" | "user";
+  actor: FeedActor;
   kind: string;
   claimId?: string | null;
   txHash?: string | null;
-  data: Record<string, unknown>;
+  data?: Record<string, unknown>;
+  source?: "on-chain" | "agent-reported";
+}
+
+export interface FeedResponse {
+  entries: FeedEntry[];
+  nextSince: number;
 }
