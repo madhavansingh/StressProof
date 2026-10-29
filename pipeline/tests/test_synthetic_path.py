@@ -220,6 +220,9 @@ def test_manifest_has_every_plan_key(data_root):
 
 def test_missing_dataset_and_missing_argument(data_root, monkeypatch):
     assert normalize.main(["--dataset", "does-not-exist"]) == 1
+    # main() calls load_env(), which would restore DATASET_ID from a developer's <repo>/.env.
+    # Stub it so this really is "no --dataset and no DATASET_ID".
+    monkeypatch.setattr(normalize, "load_env", lambda: None)
     monkeypatch.delenv("DATASET_ID", raising=False)
     with pytest.raises(SystemExit):
         normalize.main([])
