@@ -20,7 +20,7 @@ import {
 
 export default function FeedPage() {
   const { chainId: currentChainId } = useAccount();
-  const effectiveChainId = currentChainId || ACTIVE_CHAIN_ID;
+  const effectiveChainId = ACTIVE_CHAIN_ID; // reads always use the deployment chain, never the wallet's chain
   const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
   const publicClient = usePublicClient({ chainId: effectiveChainId });
 

@@ -20,6 +20,7 @@ import {
 import { RegisterAuthModal, type OperatorSession } from "./RegisterAuthModal";
 import { CommandCenterSection } from "./CommandCenterSection";
 import { BrutalistPageLoader } from "./BrutalistPageLoader";
+import { LandingConnectWallet } from "./LandingConnectWallet";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -269,15 +270,7 @@ export function LandingPage() {
                 <span>REGISTER</span>
               )}
             </button>
-            <Link
-              href="/dashboard"
-              className="group flex items-center gap-0 bg-foreground text-background text-xs font-bold uppercase tracking-wider border-2 border-foreground hover:bg-[#ea580c] hover:border-[#ea580c] hover:text-white transition-all shadow-[2px_2px_0px_0px_hsl(var(--border))]"
-            >
-              <span className="flex items-center justify-center w-7 h-7 bg-[#ea580c] text-background group-hover:bg-foreground group-hover:text-background transition-colors">
-                <ArrowRight size={14} />
-              </span>
-              <span className="px-3 py-1.5">ENTER APP</span>
-            </Link>
+            <LandingConnectWallet />
           </div>
         </nav>
       </header>

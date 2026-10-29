@@ -6,8 +6,11 @@ import { runStressTest, fetchDatasets } from "@/lib/api/client";
 import { formatUsd8, formatAddress } from "@/lib/format";
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
-import { formatEther } from "viem";
-import { extractPostedClaim } from "@/lib/web3/claimPosted";
+import { formatEther, type Abi, type Hex } from "viem";
+import { useQueryClient } from "@tanstack/react-query";
+import { checkWriteReadiness, describeWalletError } from "@/lib/web3/walletPolicy";
+import { buildPostClaimRequest, settlePublishReceipt, verifyRegistryBeforeSigning } from "@/lib/web3/postClaimRequest";
+import { isConfiguredChainId } from "@/lib/web3/wagmi";
 import {
   Zap,
   AlertTriangle,
@@ -22,9 +25,13 @@ import {
 } from "lucide-react";
 
 export default function StressPage() {
-  const { isConnected, chainId: currentChainId } = useAccount();
-  const effectiveChainId = currentChainId || ACTIVE_CHAIN_ID;
+  // The account and chain come from the authorized wallet session; the same account signs.
+  const { isConnected, address, chainId: currentChainId } = useAccount();
+  const effectiveChainId = ACTIVE_CHAIN_ID; // reads always use the deployment chain, never the wallet's chain
   const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
+  const publicClient = usePublicClient({ chainId: ACTIVE_CHAIN_ID });
+  const queryClient = useQueryClient();
+  const [isPreparing, setIsPreparing] = useState<boolean>(false);
 
   const [datasets, setDatasets] = useState<any[]>([
     {
@@ -71,11 +78,20 @@ export default function StressPage() {
       });
   }, []);
 
+  // A different account or chain invalidates any half-finished publish attempt.
+  useEffect(() => {
+    resetPost();
+    setPublishFailure(null);
+    setPublishedClaimId(null);
+  }, [address, currentChainId, resetPost]);
+
   // When the postClaim receipt confirms, take the claim id from the registry's ClaimPosted event
   useEffect(() => {
     if (!receipt || !result) return;
     try {
-      const posted = extractPostedClaim(receipt, config.registry.address, result.evidenceHash);
+      const posted = settlePublishReceipt(receipt, config.registry.address, result.evidenceHash, () => {
+        queryClient.invalidateQueries();
+      });
       if (posted.ok) {
         setPublishedClaimId(posted.claimId.toString());
         setPublishFailure(null);
@@ -88,7 +104,7 @@ export default function StressPage() {
       setPublishedClaimId(null);
       setPublishFailure("Could not decode the transaction receipt.");
     }
-  }, [receipt, config, result]);
+  }, [receipt, config, result, queryClient]);
 
   const activeDataset = datasets.find((d) => d.datasetId === selectedDataset) || datasets[0];
   const activeDataClass = result?.dataClass || activeDataset?.dataClass || "SYNTHETIC";
@@ -110,25 +126,73 @@ export default function StressPage() {
     }
   }
 
-  function handlePublishOnChain() {
+  async function handlePublishOnChain() {
     if (!result) return;
     resetPost();
     setPublishedClaimId(null);
     setPublishFailure(null);
-    if (!isConnected) {
-      setError("Nothing sent: connect a wallet to publish this claim with its bond.");
-      return;
-    }
     setError(null);
 
-    const residualBadDebt = BigInt(result.results.residualBadDebtUsd8);
+    // 1. Connected account, recorded deployment, wallet on the deployment chain.
+    const ready = checkWriteReadiness({
+      isConnected,
+      address,
+      walletChainId: currentChainId,
+      targetChainId: ACTIVE_CHAIN_ID,
+      contractAddress: config.registry.address,
+    });
+    if (!ready.ok) {
+      setError(ready.message);
+      return;
+    }
+    if (!isConfiguredChainId(ready.chainId) || !publicClient) {
+      setError(`Nothing sent: chain ${ready.chainId} is not configured in this build.`);
+      return;
+    }
+    const chainId = ready.chainId;
 
+    // 2. The exact call: registry from the deployment file, the deployment's bond, pinned chain.
+    let request;
+    try {
+      request = buildPostClaimRequest({
+        chainId,
+        registry: config.registry.address,
+        marketId: config.marketId,
+        bondWei: config.bondWei,
+        residualBadDebtUsd8: String(result.results.residualBadDebtUsd8),
+        evidenceHash: String(result.evidenceHash),
+        caseFileURI: String(result.caseFileURI),
+      });
+    } catch (err: unknown) {
+      setError(`Nothing sent: ${err instanceof Error ? err.message : "invalid claim data"}.`);
+      return;
+    }
+
+    // 3. On chain, before the signature request: code at the registry and BOND() == value sent.
+    setIsPreparing(true);
+    const check = await verifyRegistryBeforeSigning(
+      {
+        getCode: (args) => publicClient.getCode(args),
+        readContract: (args) => publicClient.readContract(args),
+      },
+      request.address,
+      config.registry.abi as Abi,
+      request.value
+    );
+    setIsPreparing(false);
+    if (!check.ok) {
+      setError(check.reason);
+      return;
+    }
+
+    // 4. Signature request from the connected wallet; wagmi refuses if its chain differs from chainId.
     writePostClaim({
-      address: config.registry.address,
+      chainId,
+      address: request.address,
       abi: config.registry.abi,
-      functionName: "postClaim",
-      args: [config.marketId, residualBadDebt, result.evidenceHash, result.caseFileURI],
-      value: config.bondWei,
+      functionName: request.functionName,
+      args: [request.args[0], request.args[1], request.args[2] as Hex, request.args[3]],
+      value: request.value,
     });
   }
 
@@ -320,13 +384,17 @@ export default function StressPage() {
           {/* On-Chain Publish Claim Button (Task F7) */}
           <div className="pt-2">
             <button
-              disabled={isPostPending || isPostConfirming}
+              disabled={isPreparing || isPostPending || isPostConfirming}
               onClick={handlePublishOnChain}
               className="w-full py-3 bg-foreground text-background text-xs font-bold uppercase tracking-wider hover:bg-[#ea580c] hover:text-white transition-all border border-foreground disabled:opacity-50"
             >
-              {isPostPending || isPostConfirming
-                ? "POSTING_CLAIM_TO_REGISTRY..."
-                : `PUBLISH_BONDED_CLAIM (STAKE ${formatEther(config.bondWei)} ETH)`}
+              {isPreparing
+                ? "CHECKING_REGISTRY_AND_BOND..."
+                : isPostPending
+                  ? "CONFIRM_IN_WALLET..."
+                  : isPostConfirming
+                    ? "WAITING_FOR_RECEIPT..."
+                    : `PUBLISH_BONDED_CLAIM (STAKE ${formatEther(config.bondWei)} ETH)`}
             </button>
           </div>
 
@@ -376,7 +444,7 @@ export default function StressPage() {
 
           {postWriteError && (
             <div className="p-3 border-2 border-rose-500 bg-rose-950/40 text-rose-300 text-xs uppercase">
-              ERROR_POSTING_CLAIM: {postWriteError.message.slice(0, 180)}
+              ERROR_POSTING_CLAIM: {describeWalletError(postWriteError).message}
             </div>
           )}
         </div>

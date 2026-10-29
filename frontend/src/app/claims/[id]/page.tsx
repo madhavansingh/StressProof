@@ -8,6 +8,8 @@ import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown } from "@/l
 import { verifyEvidenceUri, VerificationResult, resolveUri } from "@/lib/validation/verify";
 import { decodeContractError } from "@/lib/web3/errors";
 import { txPhase, txPhaseLabel } from "@/lib/web3/txStatus";
+import { checkWriteReadiness, describeWalletError } from "@/lib/web3/walletPolicy";
+import { isConfiguredChainId } from "@/lib/web3/wagmi";
 import { formatUsd8, formatAddress } from "@/lib/format";
 import {
   formatLtvBps,
@@ -35,8 +37,8 @@ import {
 
 export default function ClaimDetailPage({ params }: { params: { id: string } }) {
   const claimId = BigInt(params.id || "1");
-  const { isConnected, chainId: currentChainId } = useAccount();
-  const effectiveChainId = currentChainId || ACTIVE_CHAIN_ID;
+  const { isConnected, address, chainId: currentChainId } = useAccount();
+  const effectiveChainId = ACTIVE_CHAIN_ID; // reads always use the deployment chain, never the wallet's chain
   const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
   const publicClient = usePublicClient({ chainId: effectiveChainId });
 
@@ -178,13 +180,21 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
       return;
     }
     setApplySimulationPassed(true);
-    if (!isConnected) {
-      setVaultError("Simulation passed, nothing sent: connect a wallet to send applyClaim.");
+    const ready = checkWriteReadiness({
+      isConnected,
+      address,
+      walletChainId: currentChainId,
+      targetChainId: ACTIVE_CHAIN_ID,
+      contractAddress: config.vault.address,
+    });
+    if (!ready.ok || !isConfiguredChainId(ready.chainId)) {
+      setVaultError(`Simulation passed. ${ready.ok ? "Nothing sent: chain not configured." : ready.message}`);
       return;
     }
 
     try {
       writeApply({
+        chainId: ready.chainId,
         address: config.vault.address,
         abi: config.vault.abi,
         functionName: "applyClaim",
@@ -307,7 +317,12 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
 
       {(vaultError || applyWriteError) && (
         <div className="p-3 border-2 border-red-500 bg-red-950/40 text-red-300 text-xs flex items-center justify-between">
-          <span>{vaultError || decodeContractError(applyWriteError).userMessage}</span>
+          <span>
+            {vaultError ||
+              (describeWalletError(applyWriteError).kind !== "other"
+                ? describeWalletError(applyWriteError).message
+                : decodeContractError(applyWriteError).userMessage)}
+          </span>
           <button onClick={() => setVaultError(null)} className="text-red-400 font-bold uppercase text-[10px]">
             [DISMISS]
           </button>

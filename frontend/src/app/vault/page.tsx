@@ -5,6 +5,8 @@ import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionRec
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 import { decodeContractError } from "@/lib/web3/errors";
 import { txPhase, txPhaseLabel } from "@/lib/web3/txStatus";
+import { checkWriteReadiness, describeWalletError } from "@/lib/web3/walletPolicy";
+import { isConfiguredChainId } from "@/lib/web3/wagmi";
 import { formatUsd8, formatAddress } from "@/lib/format";
 import {
   formatLtvBps,
@@ -27,7 +29,7 @@ import {
 
 export default function VaultPage() {
   const { isConnected, address: userAddress, chainId: currentChainId } = useAccount();
-  const effectiveChainId = currentChainId || ACTIVE_CHAIN_ID;
+  const effectiveChainId = ACTIVE_CHAIN_ID; // reads always use the deployment chain, never the wallet's chain
   const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
   const publicClient = usePublicClient({ chainId: effectiveChainId });
 
@@ -38,6 +40,7 @@ export default function VaultPage() {
   const [vaultOwner, setVaultOwner] = useState<`0x${string}` | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [rpcError, setRpcError] = useState<string | null>(null);
+  const [resetGuardError, setResetGuardError] = useState<string | null>(null);
 
   // Borrow simulator fields: $10,000 collateral, $7,000 borrow (70% LTV)
   const [collateralInput, setCollateralInput] = useState<string>("10000");
@@ -160,7 +163,20 @@ export default function VaultPage() {
 
   function handleResetControls() {
     clearReset();
+    const ready = checkWriteReadiness({
+      isConnected,
+      address: userAddress,
+      walletChainId: currentChainId,
+      targetChainId: ACTIVE_CHAIN_ID,
+      contractAddress: config.vault.address,
+    });
+    if (!ready.ok || !isConfiguredChainId(ready.chainId)) {
+      setResetGuardError(ready.ok ? "Nothing sent: chain not configured." : ready.message);
+      return;
+    }
+    setResetGuardError(null);
     writeReset({
+      chainId: ready.chainId,
       address: config.vault.address,
       abi: config.vault.abi,
       functionName: "resetControls",
@@ -225,7 +241,16 @@ export default function VaultPage() {
 
       {resetError && (
         <div className="p-3 border-2 border-red-500 bg-red-950/40 text-red-300 text-xs">
-          ERROR: {decodeContractError(resetError).userMessage}
+          ERROR:{" "}
+          {describeWalletError(resetError).kind !== "other"
+            ? describeWalletError(resetError).message
+            : decodeContractError(resetError).userMessage}
+        </div>
+      )}
+
+      {resetGuardError && (
+        <div className="p-3 border-2 border-amber-500 bg-amber-950/40 text-amber-200 text-xs">
+          {resetGuardError}
         </div>
       )}
 
