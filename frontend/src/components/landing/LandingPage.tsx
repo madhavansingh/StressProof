@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, useScroll, useSpring } from "framer-motion";
 import {
   ArrowRight,
   Cpu,
@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { RegisterAuthModal, type OperatorSession } from "./RegisterAuthModal";
 import { CommandCenterSection } from "./CommandCenterSection";
+import { BrutalistPageLoader } from "./BrutalistPageLoader";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -88,8 +89,12 @@ function WorkflowDiagram() {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {stages.map((stage, idx) => (
-          <div
+          <motion.div
             key={stage.name}
+            initial={{ opacity: 0, y: 15 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: idx * 0.08, ease }}
             className="p-3 border border-border bg-background flex flex-col justify-between hover:border-foreground transition-all"
           >
             <div className="flex items-center justify-between text-[9px] text-muted-foreground font-mono">
@@ -104,7 +109,7 @@ function WorkflowDiagram() {
                 {stage.desc}
               </span>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
     </div>
@@ -189,6 +194,13 @@ export function LandingPage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [session, setSession] = useState<OperatorSession | null>(null);
 
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001,
+  });
+
   useEffect(() => {
     try {
       const stored = localStorage.getItem("stressproof_operator_session");
@@ -202,6 +214,14 @@ export function LandingPage() {
 
   return (
     <div className="w-full min-h-screen bg-background text-foreground dot-grid-bg font-mono flex flex-col selection:bg-[#ea580c] selection:text-white">
+      {/* ── Initial Interactive System Preloader ── */}
+      <BrutalistPageLoader />
+
+      {/* ── Scroll Progress Indicator (Top Bar) ── */}
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-[3px] bg-[#ea580c] origin-left z-[70] shadow-[0_0_8px_#ea580c]"
+        style={{ scaleX }}
+      />
       {/* ── Brutalist Top Navbar ── */}
       <header className="w-full px-4 pt-4 lg:px-8 lg:pt-6 sticky top-0 z-50">
         <nav className="w-full border-2 border-foreground bg-background/95 backdrop-blur-md px-5 py-3 lg:px-8 flex items-center justify-between shadow-[4px_4px_0px_0px_hsl(var(--border))]">
@@ -355,8 +375,14 @@ export function LandingPage() {
       </div>
 
       {/* ── Bento Feature Grid (2x2) ── */}
-      <section id="telemetry" className="w-full px-6 py-20 lg:px-16">
-        <div className="max-w-6xl mx-auto">
+      <section id="telemetry" className="w-full px-6 py-20 lg:px-16 scroll-mt-24">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.6, ease }}
+          className="max-w-6xl mx-auto"
+        >
           {/* Section Marker */}
           <div className="flex items-center gap-4 mb-8">
             <span className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-mono">
@@ -370,12 +396,24 @@ export function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 border-2 border-foreground bg-card">
             {/* Bento 1: Live Terminal Card */}
-            <div className="border-b-2 md:border-b-0 md:border-r-2 border-foreground min-h-[300px]">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, ease }}
+              className="border-b-2 md:border-b-0 md:border-r-2 border-foreground min-h-[300px]"
+            >
               <TerminalCard />
-            </div>
+            </motion.div>
 
             {/* Bento 2: Liquidation Waterfall / Risk Curve */}
-            <div className="border-b-2 md:border-b-0 border-foreground p-6 flex flex-col justify-between bg-card">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.1, ease }}
+              className="border-b-2 md:border-b-0 border-foreground p-6 flex flex-col justify-between bg-card"
+            >
               <div>
                 <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
                   <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
@@ -407,10 +445,16 @@ export function LandingPage() {
                   <span className="text-foreground font-bold">$2,000.00 USD8</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Bento 3: Metrics Card */}
-            <div className="border-b-2 md:border-b-0 md:border-r-2 border-foreground p-6 flex flex-col justify-between bg-card">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.15, ease }}
+              className="border-b-2 md:border-b-0 md:border-r-2 border-foreground p-6 flex flex-col justify-between bg-card"
+            >
               <div>
                 <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
                   <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
@@ -442,10 +486,16 @@ export function LandingPage() {
                   <span className="text-lg font-bold text-[#ea580c]">120 SECONDS</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             {/* Bento 4: Status Card */}
-            <div className="p-6 flex flex-col justify-between bg-card">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.2, ease }}
+              className="p-6 flex flex-col justify-between bg-card"
+            >
               <div>
                 <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
                   <span className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
@@ -477,14 +527,20 @@ export function LandingPage() {
                   <span className="text-foreground font-bold">THRESHOLD: $4,000</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* ── Architecture & Live Stats Section ── */}
-      <section id="architecture" className="w-full px-6 py-20 lg:px-16 border-t-2 border-foreground bg-secondary/30">
-        <div className="max-w-6xl mx-auto space-y-12">
+      <section id="architecture" className="w-full px-6 py-20 lg:px-16 border-t-2 border-foreground bg-secondary/30 scroll-mt-24">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.6, ease }}
+          className="max-w-6xl mx-auto space-y-12"
+        >
           {/* Section Marker */}
           <div className="flex items-center gap-4">
             <span className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-mono">
@@ -499,8 +555,12 @@ export function LandingPage() {
           {/* Stat Blocks */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {PROTOCOL_STATS.map((stat, idx) => (
-              <div
+              <motion.div
                 key={stat.label}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: idx * 0.08, ease }}
                 className="border-2 border-foreground bg-card p-4 flex flex-col justify-between shadow-[3px_3px_0px_0px_hsl(var(--border))]"
               >
                 <span className="text-[10px] tracking-widest uppercase text-muted-foreground mb-2">
@@ -509,13 +569,19 @@ export function LandingPage() {
                 <span className="text-xl sm:text-2xl font-bold text-foreground">
                   <ScrambleText text={stat.value} />
                 </span>
-              </div>
+              </motion.div>
             ))}
           </div>
 
           {/* 3 Pillars */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="border-2 border-border bg-card p-6 space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.05, ease }}
+              className="border-2 border-border bg-card p-6 space-y-3"
+            >
               <div className="h-8 w-8 bg-[#ea580c] text-background flex items-center justify-center font-bold text-xs">
                 01
               </div>
@@ -525,9 +591,15 @@ export function LandingPage() {
               <p className="text-xs text-muted-foreground uppercase leading-relaxed">
                 Liquidation cascades are evaluated using pure state transition functions over block fixtures, ensuring reproducible output down to the single cent.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="border-2 border-border bg-card p-6 space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.15, ease }}
+              className="border-2 border-border bg-card p-6 space-y-3"
+            >
               <div className="h-8 w-8 bg-foreground text-background flex items-center justify-center font-bold text-xs">
                 02
               </div>
@@ -537,9 +609,15 @@ export function LandingPage() {
               <p className="text-xs text-muted-foreground uppercase leading-relaxed">
                 Every claim commits to a SHA-256 evidence hash covering the entire execution trace, parameter set, and borrower portfolio snapshot.
               </p>
-            </div>
+            </motion.div>
 
-            <div className="border-2 border-border bg-card p-6 space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.25, ease }}
+              className="border-2 border-border bg-card p-6 space-y-3"
+            >
               <div className="h-8 w-8 bg-border text-foreground flex items-center justify-center font-bold text-xs">
                 03
               </div>
@@ -549,14 +627,20 @@ export function LandingPage() {
               <p className="text-xs text-muted-foreground uppercase leading-relaxed">
                 Attesters stake real capital (0.01 ETH). Malicious claims are caught by automated watcher bots and permanently slashed.
               </p>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* ── Protocol Roles Section ── */}
-      <section id="roles" className="w-full px-6 py-20 lg:px-16 border-t-2 border-foreground">
-        <div className="max-w-6xl mx-auto space-y-8">
+      <section id="roles" className="w-full px-6 py-20 lg:px-16 border-t-2 border-foreground scroll-mt-24">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-60px" }}
+          transition={{ duration: 0.6, ease }}
+          className="max-w-6xl mx-auto space-y-8"
+        >
           <div className="flex items-center gap-4">
             <span className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground font-mono">
               {"// SECTION: NETWORK_PARTICIPANTS"}
@@ -569,7 +653,13 @@ export function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Role 1 */}
-            <div className="border-2 border-border bg-card p-6 flex flex-col justify-between space-y-4 hover:border-foreground transition-all">
+            <motion.div
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.05, ease }}
+              className="border-2 border-border bg-card p-6 flex flex-col justify-between space-y-4 hover:border-foreground transition-all"
+            >
               <div>
                 <span className="text-[10px] text-[#ea580c] font-bold uppercase tracking-widest block mb-1">
                   ROLE // ATTESTER
@@ -587,10 +677,16 @@ export function LandingPage() {
               >
                 POST ATTESTATION &rarr;
               </Link>
-            </div>
+            </motion.div>
 
             {/* Role 2 */}
-            <div className="border-2 border-foreground bg-card p-6 flex flex-col justify-between space-y-4 shadow-[4px_4px_0px_0px_#ea580c]">
+            <motion.div
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.15, ease }}
+              className="border-2 border-foreground bg-card p-6 flex flex-col justify-between space-y-4 shadow-[4px_4px_0px_0px_#ea580c]"
+            >
               <div>
                 <span className="text-[10px] text-emerald-400 font-bold uppercase tracking-widest block mb-1">
                   ROLE // WATCHER
@@ -608,10 +704,16 @@ export function LandingPage() {
               >
                 CHALLENGE CLAIMS &rarr;
               </Link>
-            </div>
+            </motion.div>
 
             {/* Role 3 */}
-            <div className="border-2 border-border bg-card p-6 flex flex-col justify-between space-y-4 hover:border-foreground transition-all">
+            <motion.div
+              initial={{ opacity: 0, y: 25 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.25, ease }}
+              className="border-2 border-border bg-card p-6 flex flex-col justify-between space-y-4 hover:border-foreground transition-all"
+            >
               <div>
                 <span className="text-[10px] text-purple-400 font-bold uppercase tracking-widest block mb-1">
                   ROLE // DEFENSE
@@ -629,9 +731,9 @@ export function LandingPage() {
               >
                 INSPECT VAULT &rarr;
               </Link>
-            </div>
+            </motion.div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* ── Risk Command Center Section ── */}
@@ -639,7 +741,13 @@ export function LandingPage() {
 
       {/* ── Brutalist Protocol Footer ── */}
       <footer className="w-full border-t-2 border-foreground bg-background px-6 py-12 lg:px-16 text-xs text-muted-foreground font-mono">
-        <div className="max-w-6xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6, ease }}
+          className="max-w-6xl mx-auto"
+        >
           {/* Top Grid: Protocol Info + Categorized Link Matrices */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-8 pb-10 border-b border-border">
             {/* Column 1: Brand & Status Telemetry (5 cols) */}
@@ -755,7 +863,7 @@ export function LandingPage() {
               <span>&copy; 2026 SUPERCONSCIOUS / STRESSPROOF. ALL RIGHTS RESERVED.</span>
             </div>
           </div>
-        </div>
+        </motion.div>
       </footer>
 
       {/* ── Demo Frontend Auth / Register Modal ── */}
