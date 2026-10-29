@@ -14,6 +14,11 @@
 # contract reads. The chain is wrapped in evm_snapshot/evm_revert, so it ends where it started;
 # the temporary folder is deleted. Nothing outside it is written.
 #
+# Isolation: the test backend gets DATABASE_URL= (empty), which overrides any value in .env and
+# selects filesystem storage under the temporary folder; the run aborts unless /health reports
+# "storage": "filesystem". The agents get BACKEND_URL pointing at this local backend, so a deployed
+# backend named in .env is never used.
+#
 # Options: --keep-state (do not revert the chain), --keep-artifacts (keep the temporary folder).
 # Exit code 0 only if every check passed.
 set -euo pipefail
@@ -22,6 +27,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON="${PYTHON:-$REPO_ROOT/.venv/bin/python}"
 BACKEND_HOST=127.0.0.1
 BACKEND_PORT=8000
+BACKEND_URL="http://$BACKEND_HOST:$BACKEND_PORT"
 KEEP_ARTIFACTS=0
 DRIVER_ARGS=()
 for arg in "$@"; do
@@ -51,7 +57,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> GATE-24 local run (work dir $WORK_DIR)"
-DATA_DIR="$WORK_DIR/backend-data" BACKEND_PUBLIC_URL="http://$BACKEND_HOST:$BACKEND_PORT" PYTHONDONTWRITEBYTECODE=1 \
+DATABASE_URL= DATA_DIR="$WORK_DIR/backend-data" BACKEND_PUBLIC_URL="$BACKEND_URL" PYTHONDONTWRITEBYTECODE=1 \
     "$PYTHON" -B -m uvicorn stressproof_backend.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" \
     >"$WORK_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
@@ -63,5 +69,12 @@ for _ in $(seq 1 40); do
     sleep 0.5
 done
 echo "==> backend up on $BACKEND_HOST:$BACKEND_PORT"
+# Refuse to send any transaction unless the test backend really uses the temporary filesystem.
+STORAGE="$("$PYTHON" -c "import json,urllib.request; print(json.load(urllib.request.urlopen('$BACKEND_URL/health', timeout=5)).get('storage'))")"
+if [ "$STORAGE" != "filesystem" ]; then
+    echo "ERROR: test backend reports storage '$STORAGE', expected 'filesystem'; aborting before any transaction" >&2
+    exit 1
+fi
+echo "==> backend storage: filesystem ($WORK_DIR/backend-data)"
 
-PYTHONDONTWRITEBYTECODE=1 "$PYTHON" -B scripts/gate24.py --work-dir "$WORK_DIR" ${DRIVER_ARGS[@]+"${DRIVER_ARGS[@]}"}
+BACKEND_URL="$BACKEND_URL" BACKEND_PUBLIC_URL="$BACKEND_URL" PYTHONDONTWRITEBYTECODE=1 "$PYTHON" -B scripts/gate24.py --work-dir "$WORK_DIR" ${DRIVER_ARGS[@]+"${DRIVER_ARGS[@]}"}
