@@ -1,4 +1,4 @@
-# StressProof
+# StressProof 
 
 **An open, challengeable layer for AI-generated lending-market risk claims.**
 
