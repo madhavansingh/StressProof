@@ -1,58 +1,67 @@
 #!/usr/bin/env bash
+# GATE-24: the Phase 1 flow end to end on local Anvil (implementationplan.md §21.5, §24).
+#
+# Documented initial state:
+#   - Anvil on 127.0.0.1:8546, chain 31337 (`make chain`, or `anvil --port 8546`)
+#   - the contracts from deployments/31337.json deployed there (`make deploy-local`)
+#   - .env with the five Anvil test keys (DEPLOYER/ATTESTER/MALICIOUS/WATCHER/RESOLVER_PK) and
+#     LOCAL_RPC_URL=http://127.0.0.1:8546; FETCH_ALLOW_LOCALHOST=true
+#   - port 8000 free: this script starts its own backend
+#
+# What it does: starts the backend with all data in a temporary folder, then runs scripts/gate24.py,
+# which drives the real attester, malicious-attester, watcher and resolver CLIs through four
+# scenarios (honest, malicious, expiry, unsuccessful challenge) and checks every outcome against
+# contract reads. The chain is wrapped in evm_snapshot/evm_revert, so it ends where it started;
+# the temporary folder is deleted. Nothing outside it is written.
+#
+# Options: --keep-state (do not revert the chain), --keep-artifacts (keep the temporary folder).
+# Exit code 0 only if every check passed.
 set -euo pipefail
 
-echo "=========================================================="
-echo "StressProof — Local End-to-End Automated Integration Test"
-echo "Phase 1 Gate (GATE-24) Verification"
-echo "=========================================================="
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PYTHON="${PYTHON:-$REPO_ROOT/.venv/bin/python}"
+BACKEND_HOST=127.0.0.1
+BACKEND_PORT=8000
+KEEP_ARTIFACTS=0
+DRIVER_ARGS=()
+for arg in "$@"; do
+    case "$arg" in
+        --keep-state) DRIVER_ARGS+=("--keep-state") ;;
+        --keep-artifacts) KEEP_ARTIFACTS=1 ;;
+        *) echo "usage: $0 [--keep-state] [--keep-artifacts]" >&2; exit 2 ;;
+    esac
+done
 
-# 1. Check Python test suite
-echo "==> [Step 1/6] Running Python unit & property test suite..."
-uv run pytest
-
-# 2. Check contract compilation / tests if forge is installed
-echo "==> [Step 2/6] Checking Foundry contracts..."
-if command -v forge &> /dev/null; then
-    cd contracts && forge build && cd ..
+cd "$REPO_ROOT"
+[ -x "$PYTHON" ] || { echo "ERROR: $PYTHON not found; run 'uv sync' first" >&2; exit 1; }
+[ -f .env ] || { echo "ERROR: .env not found (see the initial state above)" >&2; exit 1; }
+if "$PYTHON" -c "import socket,sys; s=socket.socket(); sys.exit(0 if s.connect_ex(('$BACKEND_HOST',$BACKEND_PORT)) else 1)"; then
+    : # port free
 else
-    echo "Notice: forge not in PATH, skipping local solc build"
+    echo "ERROR: port $BACKEND_PORT is in use; stop the running backend first" >&2
+    exit 1
 fi
 
-# 3. Verify golden fixture
-echo "==> [Step 3/6] Verifying golden fixture canonical hash..."
-uv run python -c "
-from stressproof_core.canonical_json import parse_strict
-from stressproof_core.hashing import keccak256_hex
+WORK_DIR="$(mktemp -d "${TMPDIR:-/tmp}/stressproof-gate24.XXXXXX")"
+BACKEND_PID=""
+cleanup() {
+    if [ -n "$BACKEND_PID" ]; then kill "$BACKEND_PID" 2>/dev/null || true; wait "$BACKEND_PID" 2>/dev/null || true; fi
+    if [ "$KEEP_ARTIFACTS" = 1 ]; then echo "artifacts kept in $WORK_DIR"; else rm -rf "$WORK_DIR"; fi
+}
+trap cleanup EXIT
 
-with open('data/fixtures/casefile_v1.json', 'rb') as f:
-    b = f.read()
-parse_strict(b)
-h = keccak256_hex(b)
-with open('data/fixtures/casefile_v1.keccak') as f:
-    expected = f.read().strip()
-assert h == expected, f'Hash mismatch: {h} != {expected}'
-print('Fixture integrity verified:', h)
-"
+echo "==> GATE-24 local run (work dir $WORK_DIR)"
+DATA_DIR="$WORK_DIR/backend-data" BACKEND_PUBLIC_URL="http://$BACKEND_HOST:$BACKEND_PORT" PYTHONDONTWRITEBYTECODE=1 \
+    "$PYTHON" -B -m uvicorn stressproof_backend.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" \
+    >"$WORK_DIR/backend.log" 2>&1 &
+BACKEND_PID=$!
+for _ in $(seq 1 40); do
+    if "$PYTHON" -c "import urllib.request; urllib.request.urlopen('http://$BACKEND_HOST:$BACKEND_PORT/datasets', timeout=1)" 2>/dev/null; then
+        break
+    fi
+    kill -0 "$BACKEND_PID" 2>/dev/null || { echo "ERROR: backend exited; see $WORK_DIR/backend.log" >&2; exit 1; }
+    sleep 0.5
+done
+echo "==> backend up on $BACKEND_HOST:$BACKEND_PORT"
 
-# 4. Check backend health
-echo "==> [Step 4/6] Verifying FastAPI backend server module..."
-uv run python -c "
-from stressproof_backend.main import app
-assert app is not None
-print('FastAPI app initialized successfully.')
-"
-
-# 5. Check agents and SSRF security policies
-echo "==> [Step 5/6] Verifying agent security filters..."
-uv run python -c "
-from stressproof_agents.common.fetch import is_safe_url
-assert not is_safe_url('http://169.254.169.254')
-assert is_safe_url('https://ipfs.io')
-print('Agent SSRF safety policies active.')
-"
-
-# 6. Overall result
-echo "==> [Step 6/6] All integration checks completed successfully!"
-echo "=========================================================="
-echo "GATE-24 readiness check: PASSED"
-echo "=========================================================="
+PYTHONDONTWRITEBYTECODE=1 "$PYTHON" -B scripts/gate24.py --work-dir "$WORK_DIR" ${DRIVER_ARGS[@]+"${DRIVER_ARGS[@]}"}

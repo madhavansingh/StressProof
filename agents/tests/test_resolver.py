@@ -356,7 +356,8 @@ def test_expire_refuses_pending_and_needs_a_key(rw, deployment_file):
 # --------------------------------------------------------------------- CLI
 
 
-def test_cli_defaults_and_errors(tmp_path):
+def test_cli_defaults_and_errors(tmp_path, monkeypatch):
+    monkeypatch.delenv("DEPLOYMENTS_FILE", raising=False)  # see test_attester: exported variables win
     for name in ("resolve", "expire"):
         params = {p.name: p for p in cli.commands[name].params}
         assert params["dry_run"].default is True
