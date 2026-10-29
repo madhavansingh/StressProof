@@ -3,83 +3,148 @@
     "type": "function",
     "name": "registry",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "MARKET_ID",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "bytes32" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "owner",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "PAUSE_THRESHOLD",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "LTV_THRESHOLD",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "REDUCED_LTV_BPS",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "uint16" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "DEFAULT_MAX_LTV_BPS",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "uint16" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "borrowPaused",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "bool" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "maxLtvBps",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "uint16" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint16"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "lastAppliedClaimId",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "uint256" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "applied",
-    "inputs": [{ "name": "claimId", "type": "uint256" }],
-    "outputs": [{ "name": "", "type": "bool" }],
+    "inputs": [
+      {
+        "name": "claimId",
+        "type": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "applyClaim",
-    "inputs": [{ "name": "claimId", "type": "uint256" }],
+    "inputs": [
+      {
+        "name": "claimId",
+        "type": "uint256"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -94,16 +159,56 @@
     "type": "event",
     "name": "ClaimApplied",
     "inputs": [
-      { "name": "claimId", "type": "uint256", "indexed": true },
-      { "name": "residualBadDebt", "type": "uint256", "indexed": false },
-      { "name": "paused", "type": "bool", "indexed": false },
-      { "name": "maxLtvBps", "type": "uint16", "indexed": false }
+      {
+        "name": "claimId",
+        "type": "uint256",
+        "indexed": true
+      },
+      {
+        "name": "residualBadDebt",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "paused",
+        "type": "bool",
+        "indexed": false
+      },
+      {
+        "name": "maxLtvBps",
+        "type": "uint16",
+        "indexed": false
+      }
     ]
   },
   {
     "type": "event",
     "name": "ControlsReset",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotFinalized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "WrongMarket",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "AlreadyApplied",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "BelowThreshold",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotOwner",
+    "inputs": []
   }
 ]
-
