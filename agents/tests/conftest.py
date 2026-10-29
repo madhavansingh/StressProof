@@ -59,6 +59,9 @@ class FakeNode(BaseProvider):
         self.logs: List[dict] = []
         self.revert_next_estimate: Optional[str] = None  # revert data for the next eth_estimateGas
         self.revert_estimate_for: Dict[str, str] = {}  # function selector -> revert data, every time
+        self.call_handlers: Dict[tuple, Callable[[str], str]] = {}  # (address, selector) -> f(calldata)
+        self.on_send: List[Callable[[dict], None]] = []  # called with each accepted transaction
+        self.log_queries: List[dict] = []
         self.fail_next_receipt = False
         self.requests: List[str] = []
         self.block_number = 10
@@ -108,7 +111,8 @@ class FakeNode(BaseProvider):
 
     def _eth_call(self, params):
         call = params[0]
-        result = self.calls.get((call["to"].lower(), call["data"][:10]))
+        handler = self.call_handlers.get((call["to"].lower(), call["data"][:10]))
+        result = handler(call["data"]) if handler else self.calls.get((call["to"].lower(), call["data"][:10]))
         if result is None:
             return {"__error__": {"code": 3, "message": "execution reverted", "data": "0x"}}
         if result.startswith("revert:"):
@@ -149,13 +153,19 @@ class FakeNode(BaseProvider):
         self.fail_next_receipt = False
         self.sent.append({**tx, "from": sender, "hash": tx_hash})
         self.receipts[tx_hash] = self._receipt(tx_hash, sender, tx, status)
+        for hook in self.on_send:
+            hook({**tx, "from": sender})
         return tx_hash
 
     def _eth_getTransactionReceipt(self, params):
         return self.receipts.get(params[0])
 
     def _eth_getLogs(self, params):
-        return [copy.deepcopy(log) for log in self.logs]
+        self.log_queries.append(params[0])
+        low = int(params[0].get("fromBlock", "0x0"), 16)
+        high = params[0].get("toBlock", "latest")
+        high = self.block_number if high == "latest" else int(high, 16)
+        return [copy.deepcopy(log) for log in self.logs if low <= int(log["blockNumber"], 16) <= high]
 
     def _receipt(self, tx_hash: str, sender: str, tx: dict, status: int) -> dict:
         logs = [dict(log, transactionHash=tx_hash, blockNumber=hex(self.block_number)) for log in self.logs]

@@ -41,6 +41,8 @@ class FakeBackend:
         self.stress_override: Optional[Callable[[httpx.Request], httpx.Response]] = None
         self.store_override: Optional[Callable[[httpx.Request], httpx.Response]] = None
         self.serve_override: Dict[str, bytes] = {}  # hash -> bytes served instead of the stored ones
+        self.reports: Dict[str, bytes] = {}
+        self.report_override: Optional[Callable[[httpx.Request], httpx.Response]] = None
 
     def __call__(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
@@ -55,6 +57,12 @@ class FakeBackend:
             return self.stress_override(request) if self.stress_override else self._stress_run(request)
         if path == "/case-files":
             return self.store_override(request) if self.store_override else self._store(request)
+        if path == "/replay-reports":
+            if self.report_override:
+                return self.report_override(request)
+            h = keccak256_hex(request.content)
+            self.reports[h] = request.content
+            return httpx.Response(201, json={"reportHash": h, "reportURI": f"{BASE}/replay-reports/{h}"})
         if path == "/feed":
             self.feed.append(json.loads(request.content))
             return httpx.Response(201, json={"seq": len(self.feed)})

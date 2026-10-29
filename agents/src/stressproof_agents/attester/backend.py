@@ -75,6 +75,12 @@ class BackendClient:
                                headers={"Content-Type": "application/json"})
         return StoredCaseFile(_hash(data.get("evidenceHash"), "evidenceHash"), _uri(data.get("caseFileURI")))
 
+    def store_replay_report(self, raw: bytes) -> StoredCaseFile:
+        """POST /replay-reports (C-03). Returns (reportHash, reportURI) in the same shape as a case file."""
+        data = self._post_json("/replay-reports", content=raw, ok=(200, 201),
+                               headers={"Content-Type": "application/json"})
+        return StoredCaseFile(_hash(data.get("reportHash"), "reportHash"), _uri(data.get("reportURI")))
+
     def _post_json(self, path: str, ok, headers: Optional[Mapping[str, str]] = None, **kwargs) -> dict:
         all_headers = {"Authorization": f"Bearer {self._token.reveal()}", **(headers or {})}
         try:
