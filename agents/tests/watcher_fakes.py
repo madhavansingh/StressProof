@@ -27,6 +27,9 @@ class FakeRegistry:
         self.challenges: List[dict] = []
         self.withdrawals = 0
         self.flip_after_reads: Dict[int, int] = {}  # claim id -> reads before it becomes Challenged by someone else
+        self.resolutions: List[dict] = []
+        self.expiries: List[int] = []
+        self.bond = 10**16
         self._reads: Dict[int, int] = {}
         reg = REGISTRY.lower()
         node.call_handlers[(reg, selector("claim(uint256)"))] = self._claim
@@ -83,3 +86,34 @@ class FakeRegistry:
         elif data[:4].hex() == selector("withdraw()")[2:]:
             self.withdrawals += 1
             self.credit = 0
+        elif data[:4].hex() == selector("resolve(uint256,bool)")[2:]:
+            claim_id, upheld = decode(["uint256", "bool"], data[4:])
+            c = self.claims[claim_id]
+            winner = c["challenger"] if upheld else c["attester"]
+            c["state"] = 4 if upheld else 3  # Rejected / Finalized, as StressRegistry.resolve
+            self.resolutions.append({"claimId": claim_id, "upheld": upheld, "from": tx["from"]})
+            return [_log("ClaimResolved(uint256,bool,address,uint256)", [claim_id, winner],
+                         ["bool", "uint256"], [upheld, 2 * self.bond])]
+        elif data[:4].hex() == selector("expireUnresolved(uint256)")[2:]:
+            (claim_id,) = decode(["uint256"], data[4:])
+            self.claims[claim_id]["state"] = 5  # Expired
+            self.expiries.append(claim_id)
+            return [_log("ClaimExpired(uint256)", [claim_id], [], [])]
+        return None
+
+    def challenged(self, claim_id: int, challenger: str, reason: int, counter: int, report_uri: str,
+                   report_hash: str, resolution_deadline: int) -> None:
+        """Puts an existing claim into the Challenged state, as challenge() would."""
+        self.claims[claim_id].update(state=2, challenger=challenger, reason=reason, counter=counter,
+                                     reportURI=report_uri, reportHash=report_hash,
+                                     resolutionDeadline=resolution_deadline)
+
+
+def _log(signature: str, indexed: list, types: list, values: list) -> dict:
+    """A registry event log; `indexed` holds the claim id first, then any indexed address."""
+    topics = ["0x" + Web3.keccak(text=signature).hex()]
+    for value in indexed:
+        kind = "address" if isinstance(value, str) else "uint256"
+        topics.append("0x" + encode([kind], [value]).hex())
+    return {"address": REGISTRY, "topics": topics, "data": "0x" + encode(types, values).hex(),
+            "blockHash": "0x" + "ee" * 32, "transactionIndex": "0x0", "logIndex": "0x1", "removed": False}

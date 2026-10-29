@@ -152,9 +152,8 @@ class FakeNode(BaseProvider):
         status = 0 if self.fail_next_receipt else 1
         self.fail_next_receipt = False
         self.sent.append({**tx, "from": sender, "hash": tx_hash})
-        self.receipts[tx_hash] = self._receipt(tx_hash, sender, tx, status)
-        for hook in self.on_send:
-            hook({**tx, "from": sender})
+        extra_logs = [log for hook in self.on_send for log in (hook({**tx, "from": sender}) or [])]
+        self.receipts[tx_hash] = self._receipt(tx_hash, sender, tx, status, extra_logs)
         return tx_hash
 
     def _eth_getTransactionReceipt(self, params):
@@ -167,8 +166,9 @@ class FakeNode(BaseProvider):
         high = self.block_number if high == "latest" else int(high, 16)
         return [copy.deepcopy(log) for log in self.logs if low <= int(log["blockNumber"], 16) <= high]
 
-    def _receipt(self, tx_hash: str, sender: str, tx: dict, status: int) -> dict:
-        logs = [dict(log, transactionHash=tx_hash, blockNumber=hex(self.block_number)) for log in self.logs]
+    def _receipt(self, tx_hash: str, sender: str, tx: dict, status: int, extra_logs=()) -> dict:
+        logs = [dict(log, transactionHash=tx_hash, blockNumber=hex(self.block_number))
+                for log in list(self.logs) + list(extra_logs)]
         return {
             "transactionHash": tx_hash, "transactionIndex": "0x0", "blockHash": "0x" + "ee" * 32,
             "blockNumber": hex(self.block_number), "from": sender, "to": "0x" + bytes(tx["to"]).hex(),
