@@ -10,6 +10,11 @@
 # scripts/write_deployment.py confirms every receipt and on-chain value. A dry run, a failed
 # broadcast or a failed check leaves any existing deployments file untouched.
 #
+# Explorer verification (testnet) runs only after the deployments file is written, as
+# `forge script --resume --verify` against the same broadcast record; it sends no transactions
+# because every one already has a confirmed receipt. Its failure is a warning: live contracts are
+# never left unrecorded because verification failed (for example, no explorer API key).
+#
 # Overrides: FORGE, GIT, UV (tool paths) and ENV_FILE (default .env).
 set -euo pipefail
 
@@ -46,7 +51,7 @@ set -a
 set +a
 export GIT_COMMIT="$commit"
 
-verify_flag=""
+verify_after=0
 if [ "$target" = "local" ]; then
     rpc_url="${LOCAL_RPC_URL:-http://127.0.0.1:8546}"
     [ -z "$dirty" ] || echo "WARNING: uncommitted changes; gitCommit will not describe the deployed code" >&2
@@ -54,7 +59,7 @@ else
     rpc_url="${TESTNET_RPC_URL:-}"
     [ -n "$rpc_url" ] || die "TESTNET_RPC_URL is not set"
     [ -z "$dirty" ] || die "commit first; testnet deploys must match a commit"
-    verify_flag="--verify"
+    verify_after=1
 fi
 [ -n "${MARKET_ID_STRING:-}" ] || die "MARKET_ID_STRING is not set"
 
@@ -64,7 +69,7 @@ started_at="$(date +%s)"
 
 # The RPC URL is never echoed: provider URLs often contain API keys.
 echo "==> Deploying to chain ${chain_id} (commit ${commit})"
-(cd contracts && "$FORGE" script script/Deploy.s.sol:Deploy --rpc-url "$rpc_url" --broadcast $verify_flag) \
+(cd contracts && "$FORGE" script script/Deploy.s.sol:Deploy --rpc-url "$rpc_url" --broadcast) \
     || die "forge script failed"
 
 echo "==> Writing ${out_file} from confirmed receipts"
@@ -76,3 +81,12 @@ DEPLOY_RPC_URL="$rpc_url" "$UV" run --no-sync python scripts/write_deployment.py
     --not-before "$started_at" \
     --out "$out_file" \
     || die "deployment could not be confirmed"
+
+if [ "$verify_after" = 1 ]; then
+    echo "==> Verifying sources on the explorer (non-blocking)"
+    if ! (cd contracts && "$FORGE" script script/Deploy.s.sol:Deploy --rpc-url "$rpc_url" --resume --verify); then
+        echo "WARNING: explorer verification failed; ${out_file} was written and stays valid." >&2
+        echo "Retry later with the same environment (set the explorer API key first):" >&2
+        echo "  (cd contracts && forge script script/Deploy.s.sol:Deploy --rpc-url \"\$TESTNET_RPC_URL\" --resume --verify)" >&2
+    fi
+fi

@@ -100,3 +100,91 @@ def test_testnet_requires_rpc_url(tmp_path):
     result = _run("testnet", ENV_FILE=str(_env_file(tmp_path)), FORGE=str(_stub(tmp_path, "forge", 0)))
     assert result.returncode == 1
     assert "TESTNET_RPC_URL is not set" in result.stderr
+
+
+# ---- broadcast, record, then verify: the recording never depends on explorer verification ----
+
+FAKE_COMMIT = "a" * 40
+
+
+def _logging_stub(tmp_path: Path, name: str, log: Path, fail_when: str = "", exit_code: int = 0) -> Path:
+    """A stub that appends `<name> <args>` to `log`; exits 1 when its args contain `fail_when`."""
+    path = tmp_path / name
+    path.write_text(
+        "#!/bin/sh\n"
+        f'echo "{name} $*" >> "{log}"\n'
+        f'case " $* " in *"{fail_when or "<never>"}"*) exit 1 ;; esac\n'
+        f"exit {exit_code}\n"
+    )
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return path
+
+
+def _clean_git(tmp_path: Path) -> Path:
+    """git stub: a clean tree at a fixed commit, so the testnet path can run."""
+    path = tmp_path / "git"
+    path.write_text(
+        "#!/bin/sh\n"
+        'case "$1" in\n'
+        "  status) exit 0 ;;\n"
+        f"  rev-parse) echo {FAKE_COMMIT} ;;\n"
+        "  *) exit 1 ;;\n"
+        "esac\n"
+    )
+    path.chmod(path.stat().st_mode | stat.S_IEXEC)
+    return path
+
+
+def _testnet_env(tmp_path: Path) -> Path:
+    path = tmp_path / "testnet.env"
+    path.write_text("MARKET_ID_STRING=aave-v3-eth-weth-stable\nTESTNET_RPC_URL=http://127.0.0.1:1\n")
+    return path
+
+
+def _calls(log: Path) -> list:
+    return log.read_text().splitlines() if log.exists() else []
+
+
+def test_testnet_broadcasts_without_verify_then_records_then_verifies(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _run("testnet", ENV_FILE=str(_testnet_env(tmp_path)), GIT=str(_clean_git(tmp_path)),
+                  FORGE=str(_logging_stub(tmp_path, "forge", log)), UV=str(_logging_stub(tmp_path, "uv", log)))
+    assert result.returncode == 0, result.stderr
+    calls = _calls(log)
+    assert [c.split()[0] for c in calls] == ["forge", "uv", "forge"]
+    broadcast, record, verify = calls
+    assert "--broadcast" in broadcast and "--verify" not in broadcast
+    assert "write_deployment.py" in record and "--chain-id 84532" in record
+    assert "--resume" in verify and "--verify" in verify and "--broadcast" not in verify
+
+
+def test_testnet_verification_failure_keeps_the_recorded_deployment(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _run("testnet", ENV_FILE=str(_testnet_env(tmp_path)), GIT=str(_clean_git(tmp_path)),
+                  FORGE=str(_logging_stub(tmp_path, "forge", log, fail_when="--verify")),
+                  UV=str(_logging_stub(tmp_path, "uv", log)))
+    assert result.returncode == 0, result.stderr
+    assert "verification failed" in result.stderr
+    assert "deployments/84532.json was written" in result.stderr
+    assert "--resume --verify" in result.stderr  # the retry command is printed
+    assert "http://127.0.0.1:1" not in result.stdout + result.stderr  # the RPC URL is never echoed
+
+
+def test_testnet_unconfirmed_deployment_is_never_verified(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _run("testnet", ENV_FILE=str(_testnet_env(tmp_path)), GIT=str(_clean_git(tmp_path)),
+                  FORGE=str(_logging_stub(tmp_path, "forge", log)),
+                  UV=str(_logging_stub(tmp_path, "uv", log, exit_code=1)))
+    assert result.returncode == 1
+    assert "could not be confirmed" in result.stderr
+    assert [c.split()[0] for c in _calls(log)] == ["forge", "uv"]
+
+
+def test_local_deploy_never_verifies(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _run("local", ENV_FILE=str(_env_file(tmp_path)), GIT=str(_clean_git(tmp_path)),
+                  FORGE=str(_logging_stub(tmp_path, "forge", log)), UV=str(_logging_stub(tmp_path, "uv", log)))
+    assert result.returncode == 0, result.stderr
+    calls = _calls(log)
+    assert [c.split()[0] for c in calls] == ["forge", "uv"]
+    assert "--verify" not in calls[0]
