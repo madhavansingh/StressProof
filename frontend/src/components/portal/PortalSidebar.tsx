@@ -97,7 +97,7 @@ export function PortalSidebar() {
               className="flex items-center gap-3 group"
               onClick={() => setIsMobileOpen(false)}
             >
-              <div className="h-8 w-8 bg-[#ea580c] flex items-center justify-center text-background font-bold text-xs tracking-wider">
+              <div className="h-8 w-8 bg-[#ea580c] flex items-center justify-center text-white font-bold text-xs tracking-wider shadow-[3px_3px_0px_0px_#ffffff] shrink-0">
                 SP
               </div>
               <div className="flex flex-col">
