@@ -263,3 +263,27 @@ def test_replay_report_shape_evidence_invalid():
 def test_check_replay_report_rejects_bad_shapes():
     assert check_replay_report([]) != []
     assert check_replay_report({"verdict": "MATCH"}) != []
+
+
+# --- B4: explicit invariant (survives python -O) ----------------------------------
+
+def test_wrong_result_counter_rejects_equal_values():
+    from stressproof_core.verdict import VerdictInvariantError, wrong_result_counter
+    assert wrong_result_counter(HONEST_R, 3 * HONEST_R) == HONEST_R
+    with pytest.raises(VerdictInvariantError):
+        wrong_result_counter(HONEST_R, HONEST_R)
+
+
+def test_verdict_has_no_asserts_and_holds_under_python_O():
+    import subprocess
+    import sys
+    from pathlib import Path
+    src = Path(__file__).resolve().parents[1] / "src" / "stressproof_core" / "verdict.py"
+    assert "assert " not in src.read_text()
+    probe = (
+        "assert False\n"  # stripped under -O; reaching the next line proves -O is active
+        "from stressproof_core.verdict import VerdictInvariantError, wrong_result_counter\n"
+        "try:\n    wrong_result_counter(5, 5)\nexcept VerdictInvariantError:\n    print('raised')\n"
+    )
+    out = subprocess.run([sys.executable, "-O", "-c", probe], capture_output=True, text=True, check=True)
+    assert out.stdout.strip() == "raised"

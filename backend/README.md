@@ -39,7 +39,7 @@ from `DATASETS_DIR` (default `DATA_DIR/datasets`, then `data/fixtures/datasets`,
 | `DATABASE_SCHEMA` | `public` | |
 | `DATA_DIR` | `./data` | Relative paths resolve against the repo root |
 | `DATASETS_DIR` | see above | Comma-separated roots; the first root wins on duplicate ids |
-| `CORS_ORIGINS` | `http://localhost:3000` | Comma-separated; never a wildcard |
+| `CORS_ORIGINS` | `http://localhost:3000,http://127.0.0.1:3000` | Comma-separated; never a wildcard. Deployments set the frontend's public origin |
 | `MARKET_ID_STRING` | `aave-v3-eth-weth-stable` | |
 | `GIT_COMMIT` | `git rev-parse HEAD` | Recorded as `model.replayerCommit`; set it where `.git` is absent |
 | `MAX_BODY_BYTES` | 25 MB | |
@@ -59,6 +59,11 @@ uv run uvicorn stressproof_backend.main:app --host 0.0.0.0 --port $PORT --worker
 
 ## Tests
 ```bash
-uv run pytest backend/tests -q                                         # filesystem backend
-TEST_DATABASE_URL=postgresql://... uv run pytest backend/tests -q      # also runs every test on Postgres
+uv run pytest backend/tests -q                 # filesystem backend; Postgres cases are skipped
+bash backend/scripts/test_postgres.sh          # both backends, on a throwaway local Postgres (expect 115 passed, 1 skipped)
 ```
+`test_postgres.sh` needs the PostgreSQL server tools (`brew install postgresql@16`, or set `PG_BIN`). It creates
+the database in a temp folder on a free `127.0.0.1` port, removes it afterwards (also on failure), and clears
+`DATABASE_URL` for the run, so it never touches the configured database. Extra arguments go to pytest.
+To use an existing throwaway database instead: `TEST_DATABASE_URL=postgresql://... uv run pytest backend/tests -q`.
+Never point `TEST_DATABASE_URL` at the real database: the tests create and drop schemas.

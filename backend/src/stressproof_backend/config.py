@@ -38,7 +38,8 @@ class Settings(BaseSettings):
     DATA_DIR: str = "./data"
     # Extra dataset roots, comma-separated. Default: <DATA_DIR>/datasets, then data/fixtures/datasets.
     DATASETS_DIR: str = ""
-    CORS_ORIGINS: str = "http://localhost:3000"
+    # Comma-separated. Default: both local dev addresses of the Next.js frontend; deployments set their own.
+    CORS_ORIGINS: str = "http://localhost:3000,http://127.0.0.1:3000"
     MARKET_ID_STRING: str = "aave-v3-eth-weth-stable"
     MAX_BODY_BYTES: int = 26214400
     MAX_FEED_ENTRY_BYTES: int = 16384
