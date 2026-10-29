@@ -125,7 +125,7 @@ const TERMINAL_LOGS = [
   "> [LIQUIDATION] Borrower 0x3d4... health factor breached: 0.82 HF",
   "> [WATERFALL] Liquidating collateral: 50.0 WETH seized",
   "> [CALCULATION] Residual unhedged bad debt: $2,000.00 (200000000001 USD8)",
-  "> [HASH] Generating content-addressed case file: SHA-256 0x7f427d...25f0",
+  "> [HASH] Generating content-addressed case file: Keccak-256 0x7f427d...25f0",
   "> [REGISTRY] Bonded claim #1 posted on Base Sepolia (Stake: 0.01 ETH)",
   "> [OPTIMISTIC] 120s dispute window opened. Zero counter-bonds submitted",
   "> [SETTLEMENT] Claim #1 finalized. Attester credited 0.01 ETH bond",
@@ -607,7 +607,7 @@ export function LandingPage() {
                 CONTENT-ADDRESSED EVIDENCE
               </h3>
               <p className="text-xs text-muted-foreground uppercase leading-relaxed">
-                Every claim commits to a SHA-256 evidence hash covering the entire execution trace, parameter set, and borrower portfolio snapshot.
+                Every claim commits to a Keccak-256 evidence hash of the canonical case file: scenario, parameters, borrower snapshot and replay results.
               </p>
             </motion.div>
 

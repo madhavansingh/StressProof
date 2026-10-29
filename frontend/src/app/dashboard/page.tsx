@@ -16,6 +16,7 @@ import { useAccount, usePublicClient } from "wagmi";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 import { formatUsd8 } from "@/lib/format";
 import { parseClaimStruct } from "@/lib/claims";
+import { UNAVAILABLE, formatLtvBps, formatPaused, ltvStatusLabel, parseVaultReading, vaultConfig } from "@/lib/vaultDisplay";
 
 export default function DashboardMarketsPage() {
   const { chainId } = useAccount();
@@ -23,10 +24,12 @@ export default function DashboardMarketsPage() {
   const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
   const publicClient = usePublicClient({ chainId: effectiveChainId });
 
-  const [maxLtvBps, setMaxLtvBps] = useState<number>(8000);
-  const [borrowPaused, setBorrowPaused] = useState<boolean>(false);
-  const [claimCount, setClaimCount] = useState<number>(0);
-  const [latestClaimBadDebt, setLatestClaimBadDebt] = useState<bigint>(0n);
+  // null until a read succeeds, and again after a failed read: never show defaults as live state
+  const limits = useMemo(() => vaultConfig(effectiveChainId), [effectiveChainId]);
+  const [maxLtvBps, setMaxLtvBps] = useState<number | null>(null);
+  const [borrowPaused, setBorrowPaused] = useState<boolean | null>(null);
+  const [claimCount, setClaimCount] = useState<number | null>(null);
+  const [latestClaimBadDebt, setLatestClaimBadDebt] = useState<bigint | null>(null);
 
   useEffect(() => {
     async function loadDashboardChainState() {
@@ -50,10 +53,12 @@ export default function DashboardMarketsPage() {
           }),
         ]);
 
-        setMaxLtvBps(Number(maxLtv as bigint | number));
-        setBorrowPaused(Boolean(paused));
+        const reading = parseVaultReading(maxLtv, paused, 0n);
+        setMaxLtvBps(reading.maxLtvBps);
+        setBorrowPaused(reading.borrowPaused);
         const cnt = Number(countRaw as bigint);
         setClaimCount(cnt);
+        if (cnt === 0) setLatestClaimBadDebt(null);
 
         if (cnt > 0) {
           const rawClaim = await publicClient.readContract({
@@ -66,7 +71,11 @@ export default function DashboardMarketsPage() {
           setLatestClaimBadDebt(parsed.claimedResidualBadDebt);
         }
       } catch (err) {
-        // Handled silently
+        // The RPC read failed: show UNAVAILABLE rather than defaults or stale values
+        setMaxLtvBps(null);
+        setBorrowPaused(null);
+        setClaimCount(null);
+        setLatestClaimBadDebt(null);
       }
     }
 
@@ -153,9 +162,11 @@ export default function DashboardMarketsPage() {
             <Radio className="h-4 w-4 text-emerald-400" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{claimCount} RECORDED</p>
+            <p className="text-2xl font-bold text-foreground">
+              {claimCount === null ? UNAVAILABLE : `${claimCount} RECORDED`}
+            </p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              LATEST: {formatUsd8(latestClaimBadDebt)} BAD DEBT
+              LATEST: {latestClaimBadDebt === null ? "—" : `${formatUsd8(latestClaimBadDebt)} BAD DEBT`}
             </span>
           </div>
         </div>
@@ -169,9 +180,9 @@ export default function DashboardMarketsPage() {
             <Shield className="h-4 w-4 text-[#ea580c]" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#ea580c]">{(maxLtvBps / 100).toFixed(2)}%</p>
+            <p className="text-2xl font-bold text-[#ea580c]">{formatLtvBps(maxLtvBps)}</p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              {maxLtvBps <= 5000 ? "DEFENSE_TIGHTENED" : "BASELINE (80.00%)"}
+              {ltvStatusLabel(maxLtvBps, limits)}
             </span>
           </div>
         </div>
@@ -186,10 +197,10 @@ export default function DashboardMarketsPage() {
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">
-              {borrowPaused ? "HALTED" : "OPERATIONAL"}
+              {formatPaused(borrowPaused, "HALTED", "OPERATIONAL")}
             </p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              {borrowPaused ? "BORROW_HALTED" : "ALL_SYSTEMS_NORMAL"}
+              {formatPaused(borrowPaused, "BORROW_HALTED", "ALL_SYSTEMS_NORMAL")}
             </span>
           </div>
         </div>

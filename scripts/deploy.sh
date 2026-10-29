@@ -15,7 +15,13 @@
 # because every one already has a confirmed receipt. Its failure is a warning: live contracts are
 # never left unrecorded because verification failed (for example, no explorer API key).
 #
-# Overrides: FORGE, GIT, UV (tool paths) and ENV_FILE (default .env).
+# No silent duplicate deployments (testnet): the script refuses to broadcast when
+# deployments/84532.json already records a deployment, or when a broadcast record exists that was
+# never recorded (a deploy whose recording failed). RECORD_ONLY=1 records that existing broadcast
+# without sending anything (run it from the same commit); REDEPLOY=1 deploys a new set on purpose.
+#
+# Overrides: FORGE, GIT, UV (tool paths), ENV_FILE (default .env), DEPLOYMENTS_DIR and
+# BROADCAST_DIR (tests), RECORD_ONLY, REDEPLOY.
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -63,14 +69,31 @@ else
 fi
 [ -n "${MARKET_ID_STRING:-}" ] || die "MARKET_ID_STRING is not set"
 
-out_file="deployments/${chain_id}.json"
-broadcast_file="contracts/broadcast/Deploy.s.sol/${chain_id}/run-latest.json"
+out_file="${DEPLOYMENTS_DIR:-deployments}/${chain_id}.json"
+broadcast_file="${BROADCAST_DIR:-contracts/broadcast/Deploy.s.sol}/${chain_id}/run-latest.json"
+record_only="${RECORD_ONLY:-0}"
 started_at="$(date +%s)"
 
-# The RPC URL is never echoed: provider URLs often contain API keys.
-echo "==> Deploying to chain ${chain_id} (commit ${commit})"
-(cd contracts && "$FORGE" script script/Deploy.s.sol:Deploy --rpc-url "$rpc_url" --broadcast) \
-    || die "forge script failed"
+if [ "$record_only" = 1 ]; then
+    [ -f "$broadcast_file" ] || die "RECORD_ONLY=1 but there is no broadcast record at ${broadcast_file}"
+elif [ "$target" = "testnet" ] && [ "${REDEPLOY:-0}" != 1 ]; then
+    if [ -f "$out_file" ] && ! grep -Eq '"registry"[[:space:]]*:[[:space:]]*"0x0{40}"' "$out_file"; then
+        die "${out_file} already records a deployment; set REDEPLOY=1 to deploy a new set of contracts on purpose"
+    fi
+    if [ -f "$broadcast_file" ]; then
+        die "an unrecorded broadcast exists at ${broadcast_file}; record it with RECORD_ONLY=1 instead of deploying again (or set REDEPLOY=1)"
+    fi
+fi
+
+if [ "$record_only" = 1 ]; then
+    echo "==> Recording the existing broadcast for chain ${chain_id} (no transactions sent)"
+    started_at=0
+else
+    # The RPC URL is never echoed: provider URLs often contain API keys.
+    echo "==> Deploying to chain ${chain_id} (commit ${commit})"
+    (cd contracts && "$FORGE" script script/Deploy.s.sol:Deploy --rpc-url "$rpc_url" --broadcast) \
+        || die "forge script failed"
+fi
 
 echo "==> Writing ${out_file} from confirmed receipts"
 DEPLOY_RPC_URL="$rpc_url" "$UV" run --no-sync python scripts/write_deployment.py \

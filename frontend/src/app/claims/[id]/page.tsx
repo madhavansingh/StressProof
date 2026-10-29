@@ -7,7 +7,17 @@ import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown } from "@/lib/claims";
 import { verifyEvidenceUri, VerificationResult, resolveUri } from "@/lib/validation/verify";
 import { decodeContractError } from "@/lib/web3/errors";
+import { txPhase, txPhaseLabel } from "@/lib/web3/txStatus";
 import { formatUsd8, formatAddress } from "@/lib/format";
+import {
+  formatLtvBps,
+  formatPaused,
+  formatThreshold,
+  ltvStatusLabel,
+  parseVaultReading,
+  vaultConfig,
+  type VaultReading,
+} from "@/lib/vaultDisplay";
 import {
   Shield,
   CheckCircle2,
@@ -43,11 +53,11 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
   const [isVerifyingReport, setIsVerifyingReport] = useState<boolean>(false);
   const [reportResult, setReportResult] = useState<VerificationResult | null>(null);
 
-  // Vault state
-  const [vaultMaxLtvBps, setVaultMaxLtvBps] = useState<number>(8000);
-  const [vaultPaused, setVaultPaused] = useState<boolean>(false);
-  const [lastAppliedClaimId, setLastAppliedClaimId] = useState<bigint>(0n);
+  // Vault state: null until a read succeeds, and again after a failed read (never defaults as live state)
+  const limits = useMemo(() => vaultConfig(effectiveChainId), [effectiveChainId]);
+  const [vault, setVault] = useState<VaultReading | null>(null);
   const [vaultError, setVaultError] = useState<string | null>(null);
+  const [applySimulationPassed, setApplySimulationPassed] = useState<boolean>(false);
 
   // Write contract for applying claim to DemoVault
   const {
@@ -58,8 +68,14 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
     reset: resetApply,
   } = useWriteContract();
 
-  const { isLoading: isApplyConfirming, isSuccess: isApplyConfirmed } =
+  const { data: applyReceipt, isLoading: isApplyConfirming, isSuccess: isApplyConfirmed } =
     useWaitForTransactionReceipt({ hash: applyTxHash });
+  const applyPhase = txPhase({
+    simulationPassed: applySimulationPassed,
+    awaitingSignature: isApplyPending,
+    hash: applyTxHash,
+    receiptStatus: applyReceipt?.status,
+  });
 
   // Borrow Simulation states
   const [collateralUsdInput, setCollateralUsdInput] = useState<string>("10000");
@@ -104,9 +120,7 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
       const parsed = parseClaimStruct(claimId, rawClaim);
       setClaim(parsed);
       setBlockTimestamp(Number(block.timestamp));
-      setVaultMaxLtvBps(Number(maxLtv as bigint | number));
-      setVaultPaused(Boolean(paused));
-      setLastAppliedClaimId(BigInt(lastApplied as bigint | number));
+      setVault(parseVaultReading(maxLtv, paused, lastApplied));
       setIsLoadingClaim(false);
 
       // Trigger automatic verification of caseFileURI without manual input
@@ -128,6 +142,7 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
       }
     } catch (err: any) {
       console.error("Failed to load claim detail from RPC:", err);
+      setVault(null);
       setClaimError(err?.message || "Failed to load claim from chain");
       setIsLoadingClaim(false);
     }
@@ -143,14 +158,28 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
     }
   }, [isApplyConfirmed, loadData]);
 
-  // Apply claim to DemoVault
-  function handleApplyToVault() {
+  // Apply claim to DemoVault: the vault contract decides (eth_call first), then the wallet sends
+  async function handleApplyToVault() {
     resetApply();
     setVaultError(null);
-    if (!claim) return;
+    setApplySimulationPassed(false);
+    if (!claim || !publicClient) return;
 
-    if (claim.stateName !== "Finalized") {
-      setVaultError("REVERT: Only finalized claims can change the vault");
+    try {
+      await publicClient.simulateContract({
+        address: config.vault.address,
+        abi: config.vault.abi,
+        functionName: "applyClaim",
+        args: [claim.id],
+      });
+    } catch (err: unknown) {
+      const decoded = decodeContractError(err);
+      setVaultError(`REVERT ${decoded.errorName}: ${decoded.userMessage}`);
+      return;
+    }
+    setApplySimulationPassed(true);
+    if (!isConnected) {
+      setVaultError("Simulation passed, nothing sent: connect a wallet to send applyClaim.");
       return;
     }
 
@@ -254,7 +283,7 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
             <RefreshCw className={`h-4 w-4 ${isLoadingClaim ? "animate-spin text-[#ea580c]" : ""}`} />
           </button>
           <button
-            disabled={isApplyPending || isApplyConfirming || !claim || claim.stateName !== "Finalized"}
+            disabled={isApplyPending || isApplyConfirming || !claim}
             onClick={handleApplyToVault}
             className="w-full sm:w-auto px-4 py-2 bg-foreground text-background text-xs font-bold uppercase tracking-wider hover:bg-[#ea580c] hover:text-white transition-all border border-foreground shrink-0 disabled:opacity-50"
           >
@@ -263,12 +292,16 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
         </div>
       </div>
 
-      {applyTxHash && (
-        <div className="p-3 border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 text-xs flex items-center justify-between">
-          <span>TX_HASH: {applyTxHash}</span>
-          <span className="font-bold uppercase text-[10px]">
-            {isApplyConfirming ? "CONFIRMING..." : "CONFIRMED"}
-          </span>
+      {applyPhase !== "idle" && (
+        <div
+          className={`p-3 border-2 text-xs flex items-center justify-between ${
+            applyPhase === "mined-reverted"
+              ? "border-red-500 bg-red-950/40 text-red-300"
+              : "border-emerald-500 bg-emerald-950/40 text-emerald-300"
+          }`}
+        >
+          <span>{applyTxHash ? `TX_HASH: ${applyTxHash}` : "APPLY_CLAIM"}</span>
+          <span className="font-bold uppercase text-[10px]">{txPhaseLabel(applyPhase)}</span>
         </div>
       )}
 
@@ -302,7 +335,7 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
               {formatUsd8(claim.claimedResidualBadDebt)}
             </p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              REDUCED_LTV_TRIGGER: $1,000.00
+              REDUCED_LTV_TRIGGER: {formatThreshold(limits.ltvThresholdUsd8)}
             </span>
           </div>
 
@@ -488,7 +521,7 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
             </h3>
           </div>
           <span className="text-[10px] text-muted-foreground uppercase">
-            LAST_APPLIED_CLAIM: #{lastAppliedClaimId.toString()}
+            LAST_APPLIED_CLAIM: {vault === null ? "UNAVAILABLE" : `#${vault.lastAppliedClaimId.toString()}`}
           </span>
         </div>
 
@@ -496,20 +529,20 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
           <div className="p-4 bg-secondary border border-border">
             <span className="text-[10px] text-muted-foreground uppercase block">ACTIVE_MAX_LTV</span>
             <p className="text-2xl font-black text-[#ea580c]">
-              {(vaultMaxLtvBps / 100).toFixed(2)}%
+              {formatLtvBps(vault?.maxLtvBps ?? null)}
             </p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              {vaultMaxLtvBps === 5000 ? "DEFENSE_TIGHTENED (50.00%)" : "DEFAULT (80.00%)"}
+              {ltvStatusLabel(vault?.maxLtvBps ?? null, limits)}
             </span>
           </div>
 
           <div className="p-4 bg-secondary border border-border">
             <span className="text-[10px] text-muted-foreground uppercase block">BORROW_PAUSED</span>
             <p className="text-2xl font-black text-foreground">
-              {vaultPaused ? "HALTED" : "OPERATIONAL"}
+              {formatPaused(vault?.borrowPaused ?? null, "HALTED", "OPERATIONAL")}
             </p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              CIRCUIT_BREAKER_TRIGGER: $4,000.00
+              CIRCUIT_BREAKER_TRIGGER: {formatThreshold(limits.pauseThresholdUsd8)}
             </span>
           </div>
         </div>

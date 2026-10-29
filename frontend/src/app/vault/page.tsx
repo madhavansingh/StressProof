@@ -4,7 +4,16 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 import { decodeContractError } from "@/lib/web3/errors";
+import { txPhase, txPhaseLabel } from "@/lib/web3/txStatus";
 import { formatUsd8, formatAddress } from "@/lib/format";
+import {
+  formatLtvBps,
+  formatPaused,
+  formatThreshold,
+  parseVaultReading,
+  vaultConfig,
+  type VaultReading,
+} from "@/lib/vaultDisplay";
 import {
   Shield,
   Lock,
@@ -23,9 +32,9 @@ export default function VaultPage() {
   const publicClient = usePublicClient({ chainId: effectiveChainId });
 
   // On-chain DemoVault state
-  const [maxLtvBps, setMaxLtvBps] = useState<number>(8000);
-  const [borrowPaused, setBorrowPaused] = useState<boolean>(false);
-  const [lastAppliedClaimId, setLastAppliedClaimId] = useState<bigint>(0n);
+  const limits = useMemo(() => vaultConfig(effectiveChainId), [effectiveChainId]);
+  // null until a read succeeds, and again after a failed read: never show defaults as live state
+  const [vault, setVault] = useState<VaultReading | null>(null);
   const [vaultOwner, setVaultOwner] = useState<`0x${string}` | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [rpcError, setRpcError] = useState<string | null>(null);
@@ -49,8 +58,14 @@ export default function VaultPage() {
     reset: clearReset,
   } = useWriteContract();
 
-  const { isLoading: isResetConfirming, isSuccess: isResetConfirmed } =
+  const { data: resetReceipt, isLoading: isResetConfirming, isSuccess: isResetConfirmed } =
     useWaitForTransactionReceipt({ hash: resetTxHash });
+  const resetPhase = txPhase({
+    simulationPassed: false,
+    awaitingSignature: isResetPending,
+    hash: resetTxHash,
+    receiptStatus: resetReceipt?.status,
+  });
 
   // Fetch real vault state from chain
   const loadVaultData = useCallback(async () => {
@@ -80,13 +95,13 @@ export default function VaultPage() {
         }),
       ]);
 
-      setMaxLtvBps(Number(maxLtv as bigint | number));
-      setBorrowPaused(Boolean(paused));
-      setLastAppliedClaimId(BigInt(lastApplied as bigint | number));
+      setVault(parseVaultReading(maxLtv, paused, lastApplied));
       setVaultOwner(owner as `0x${string}`);
       setIsLoading(false);
     } catch (err: any) {
       console.error("Failed to load DemoVault data from RPC:", err);
+      setVault(null);
+      setVaultOwner(null);
       setRpcError(err?.message || "Failed to query RPC for DemoVault parameters.");
       setIsLoading(false);
     }
@@ -181,7 +196,12 @@ export default function VaultPage() {
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin text-[#ea580c]" : ""}`} />
           </button>
           <button
-            disabled={isResetPending || isResetConfirming || (!isOwner && !borrowPaused && maxLtvBps === 8000)}
+            disabled={
+              isResetPending ||
+              isResetConfirming ||
+              vault === null ||
+              (!isOwner && !vault.borrowPaused && vault.maxLtvBps === limits.defaultMaxLtvBps)
+            }
             onClick={handleResetControls}
             className="w-full sm:w-auto px-4 py-2 text-xs font-bold uppercase tracking-wider border-2 border-foreground bg-foreground text-background hover:bg-[#ea580c] hover:border-[#ea580c] hover:text-white transition-all shrink-0 disabled:opacity-50"
           >
@@ -191,11 +211,15 @@ export default function VaultPage() {
       </div>
 
       {resetTxHash && (
-        <div className="p-3 border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 text-xs flex items-center justify-between">
+        <div
+          className={`p-3 border-2 text-xs flex items-center justify-between ${
+            resetPhase === "mined-reverted"
+              ? "border-red-500 bg-red-950/40 text-red-300"
+              : "border-emerald-500 bg-emerald-950/40 text-emerald-300"
+          }`}
+        >
           <span>CONTROLS_RESET_TX: {resetTxHash}</span>
-          <span className="font-bold text-[10px] uppercase">
-            {isResetConfirming ? "CONFIRMING..." : "CONFIRMED"}
-          </span>
+          <span className="font-bold text-[10px] uppercase">{txPhaseLabel(resetPhase)}</span>
         </div>
       )}
 
@@ -212,7 +236,8 @@ export default function VaultPage() {
             RPC_CONNECTIVITY_NOTICE
           </div>
           <p className="text-[11px] uppercase">
-            Failed to query DemoVault at <code>{config.vault.address}</code>. Check local Anvil on port 8546.
+            Failed to query DemoVault at <code>{config.vault.address}</code> on chain {effectiveChainId}. Check the
+            configured RPC endpoint. Vault values are shown as UNAVAILABLE until a read succeeds.
           </p>
         </div>
       )}
@@ -228,13 +253,17 @@ export default function VaultPage() {
           </div>
           <div>
             <div className="flex items-baseline gap-2">
-              <p className="text-3xl font-bold text-[#ea580c]">{(maxLtvBps / 100).toFixed(2)}%</p>
-              <span className="text-xs text-muted-foreground line-through">80.00%</span>
+              <p className="text-3xl font-bold text-[#ea580c]">{formatLtvBps(vault?.maxLtvBps ?? null)}</p>
+              {vault !== null && limits.defaultMaxLtvBps !== null && vault.maxLtvBps < limits.defaultMaxLtvBps && (
+                <span className="text-xs text-muted-foreground line-through">{formatLtvBps(limits.defaultMaxLtvBps)}</span>
+              )}
             </div>
             <span className="text-[10px] text-muted-foreground uppercase">
-              {lastAppliedClaimId > 0n
-                ? `DYNAMICALLY TIGHTENED BY CLAIM #${lastAppliedClaimId.toString()}`
-                : "BASELINE UNALTERED PARAMETER"}
+              {vault === null
+                ? "VAULT STATE UNAVAILABLE"
+                : vault.lastAppliedClaimId > 0n
+                  ? `DYNAMICALLY TIGHTENED BY CLAIM #${vault.lastAppliedClaimId.toString()}`
+                  : "BASELINE UNALTERED PARAMETER"}
             </span>
           </div>
         </div>
@@ -248,10 +277,10 @@ export default function VaultPage() {
           </div>
           <div>
             <p className="text-3xl font-bold text-foreground">
-              {borrowPaused ? "HALTED" : "OPERATIONAL"}
+              {formatPaused(vault?.borrowPaused ?? null, "HALTED", "OPERATIONAL")}
             </p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              PAUSE_THRESHOLD: $4,000.00 BAD DEBT
+              PAUSE_THRESHOLD: {formatThreshold(limits.pauseThresholdUsd8)} BAD DEBT
             </span>
           </div>
         </div>
@@ -319,12 +348,12 @@ export default function VaultPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">MAX_ALLOWED_LTV:</span>
-                  <span className="font-bold text-[#ea580c]">{(maxLtvBps / 100).toFixed(2)}%</span>
+                  <span className="font-bold text-[#ea580c]">{formatLtvBps(vault?.maxLtvBps ?? null)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">CIRCUIT_BREAKER:</span>
                   <span className="font-bold text-foreground">
-                    {borrowPaused ? "PAUSED" : "ACTIVE"}
+                    {formatPaused(vault?.borrowPaused ?? null, "PAUSED", "ACTIVE")}
                   </span>
                 </div>
               </div>

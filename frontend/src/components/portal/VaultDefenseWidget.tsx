@@ -5,6 +5,15 @@ import { Shield, Lock, AlertCircle, CheckCircle2, PauseCircle, Loader2 } from "l
 import Link from "next/link";
 import { useAccount, usePublicClient } from "wagmi";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
+import {
+  formatLtvBps,
+  formatPaused,
+  formatThreshold,
+  ltvStatusLabel,
+  parseVaultReading,
+  vaultConfig,
+  type VaultReading,
+} from "@/lib/vaultDisplay";
 
 export function VaultDefenseWidget({ className = "" }: { className?: string }) {
   const { chainId } = useAccount();
@@ -12,9 +21,9 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
   const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
   const publicClient = usePublicClient({ chainId: effectiveChainId });
 
-  const [maxLtvBps, setMaxLtvBps] = useState<number>(8000);
-  const [borrowPaused, setBorrowPaused] = useState<boolean>(false);
-  const [lastAppliedClaimId, setLastAppliedClaimId] = useState<bigint>(0n);
+  const limits = useMemo(() => vaultConfig(effectiveChainId), [effectiveChainId]);
+  // null until a read succeeds, and again after a failed read: never show defaults as live state
+  const [vault, setVault] = useState<VaultReading | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -41,13 +50,14 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
         ]);
 
         if (mounted) {
-          setMaxLtvBps(Number(maxLtv as bigint | number));
-          setBorrowPaused(Boolean(paused));
-          setLastAppliedClaimId(BigInt(lastApplied as bigint | number));
+          setVault(parseVaultReading(maxLtv, paused, lastApplied));
           setLoading(false);
         }
       } catch (err) {
-        if (mounted) setLoading(false);
+        if (mounted) {
+          setVault(null);
+          setLoading(false);
+        }
       }
     }
 
@@ -59,28 +69,34 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
     };
   }, [publicClient, config]);
 
-  const isLtvTightened = maxLtvBps <= 5000;
+  const isLtvTightened =
+    vault !== null && limits.defaultMaxLtvBps !== null && vault.maxLtvBps < limits.defaultMaxLtvBps;
+  const unavailable = "Vault state unavailable: the RPC read failed";
 
   const milestones = [
     {
       id: "def-1",
-      title: "DYNAMIC LTV REDUCTION (80% → 50%)",
-      subtitle: isLtvTightened
-        ? `Triggered automatically on chain by Claim #${lastAppliedClaimId.toString()}`
-        : "Armed — will tighten to 50% upon finalized bad debt >= $1,000",
-      status: isLtvTightened ? "triggered" : "armed",
-      threshold: "THRESHOLD: $1,000 BAD DEBT",
+      title: `DYNAMIC LTV REDUCTION (${formatLtvBps(limits.defaultMaxLtvBps)} → ${formatLtvBps(limits.reducedLtvBps)})`,
+      subtitle: vault === null
+        ? unavailable
+        : isLtvTightened
+          ? `Triggered on chain by Claim #${vault.lastAppliedClaimId.toString()}`
+          : `Armed — tightens on a finalized claim >= ${formatThreshold(limits.ltvThresholdUsd8)}`,
+      status: vault === null ? "unknown" : isLtvTightened ? "triggered" : "armed",
+      threshold: `THRESHOLD: ${formatThreshold(limits.ltvThresholdUsd8)} BAD DEBT`,
       progress: isLtvTightened ? 100 : 0,
     },
     {
       id: "def-2",
       title: "EMERGENCY BORROW PAUSE CIRCUIT BREAKER",
-      subtitle: borrowPaused
-        ? "Emergency pause active — all new borrowings halted"
-        : "Armed — will trip circuit breaker upon bad debt >= $4,000",
-      status: borrowPaused ? "triggered" : "armed",
-      threshold: "THRESHOLD: $4,000 BAD DEBT",
-      progress: borrowPaused ? 100 : 0,
+      subtitle: vault === null
+        ? unavailable
+        : vault.borrowPaused
+          ? "Emergency pause active — all new borrowings halted"
+          : `Armed — pauses on a finalized claim >= ${formatThreshold(limits.pauseThresholdUsd8)}`,
+      status: vault === null ? "unknown" : vault.borrowPaused ? "triggered" : "armed",
+      threshold: `THRESHOLD: ${formatThreshold(limits.pauseThresholdUsd8)} BAD DEBT`,
+      progress: vault?.borrowPaused ? 100 : 0,
     },
     {
       id: "def-3",
@@ -124,20 +140,20 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
         <div className="p-3 bg-secondary border border-border">
           <span className="text-[10px] text-muted-foreground uppercase block">ACTIVE_MAX_LTV</span>
           <p className="text-xl sm:text-2xl font-bold text-[#ea580c]">
-            {(maxLtvBps / 100).toFixed(2)}%
+            {formatLtvBps(vault?.maxLtvBps ?? null)}
           </p>
           <span className="text-[10px] text-muted-foreground uppercase">
-            {isLtvTightened ? "TIGHTENED_CIRCUIT" : "BASELINE (80.00%)"}
+            {ltvStatusLabel(vault?.maxLtvBps ?? null, limits)}
           </span>
         </div>
 
         <div className="p-3 bg-secondary border border-border">
           <span className="text-[10px] text-muted-foreground uppercase block">CIRCUIT_STATUS</span>
           <p className="text-xl sm:text-2xl font-bold text-foreground">
-            {borrowPaused ? "HALTED" : "OPERATIONAL"}
+            {formatPaused(vault?.borrowPaused ?? null, "HALTED", "OPERATIONAL")}
           </p>
           <span className="text-[10px] text-muted-foreground uppercase">
-            {borrowPaused ? "PAUSE_ACTIVE" : "ALL_CHECKS_NORMAL"}
+            {formatPaused(vault?.borrowPaused ?? null, "PAUSE_ACTIVE", "ALL_CHECKS_NORMAL")}
           </span>
         </div>
       </div>

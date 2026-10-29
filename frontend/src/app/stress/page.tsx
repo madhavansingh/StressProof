@@ -115,6 +115,11 @@ export default function StressPage() {
     resetPost();
     setPublishedClaimId(null);
     setPublishFailure(null);
+    if (!isConnected) {
+      setError("Nothing sent: connect a wallet to publish this claim with its bond.");
+      return;
+    }
+    setError(null);
 
     const residualBadDebt = BigInt(result.results.residualBadDebtUsd8);
 

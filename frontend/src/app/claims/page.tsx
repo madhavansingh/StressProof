@@ -249,7 +249,8 @@ export default function ClaimsPage() {
             RPC_CONNECTIVITY_WARNING
           </div>
           <p className="text-[11px] text-amber-300 uppercase leading-relaxed">
-            Unable to connect to registry at <code>{config.registry.address}</code> on Chain ID {effectiveChainId}. Ensure local Anvil is running on port 8546.
+            Unable to read the registry at <code>{config.registry.address}</code> on chain {effectiveChainId}. Check the
+            configured RPC endpoint.{claims.length > 0 ? " The rows below are the last successful read." : ""}
           </p>
         </div>
       )}
@@ -258,7 +259,7 @@ export default function ClaimsPage() {
       <div className="bg-card border-2 border-border">
         <div className="px-5 py-3 border-b-2 border-border bg-muted/20 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-bold uppercase tracking-widest text-foreground">
-            // REGISTRY_LEDGER ({claims.length}_RECORDS)
+            // REGISTRY_LEDGER ({rpcError && claims.length === 0 ? "UNAVAILABLE" : `${claims.length}_RECORDS`})
           </span>
           <div className="flex items-center gap-4 text-[10px] text-muted-foreground uppercase">
             <span>REGISTRY: {formatAddress(config.registry.address)}</span>
@@ -271,6 +272,11 @@ export default function ClaimsPage() {
             <div className="p-12 text-center text-xs text-muted-foreground uppercase space-y-2">
               <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#ea580c]" />
               <p>QUERYING CONTRACT LEDGER VIA RPC...</p>
+            </div>
+          ) : rpcError && claims.length === 0 ? (
+            <div className="p-12 text-center text-xs text-muted-foreground uppercase space-y-2">
+              <ShieldAlert className="h-8 w-8 mx-auto text-amber-400" />
+              <p className="text-foreground font-bold">CLAIMS UNAVAILABLE: THE REGISTRY COULD NOT BE READ</p>
             </div>
           ) : claims.length === 0 ? (
             <div className="p-12 text-center text-xs text-muted-foreground uppercase space-y-2">

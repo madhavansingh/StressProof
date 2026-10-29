@@ -47,6 +47,24 @@ LOCAL_CHAIN_ID = 31337
 FIXTURE_DATASET = "weth-stable-fixture-v1"  # the committed fixture dataset (data/fixtures/datasets/)
 ANVIL_MNEMONIC = "test test test test test test test test test test test junk"  # public Anvil test accounts
 EXTRA_CHALLENGER_INDEX = 5  # a fourth party, outside the five project roles
+# The documented local roles (public Anvil test accounts) that deployments/31337.json was deployed with.
+LOCAL_ROLE_INDEX = {"DEPLOYER": 0, "RESOLVER": 1, "ATTESTER": 2, "WATCHER": 3, "MALICIOUS": 4}
+LOCAL_DEPLOYMENTS_FILE = "deployments/31337.json"
+
+
+def local_test_environment() -> dict:
+    """
+    Everything the local run needs, independent of a developer's personal .env: the local RPC, the
+    local deployments file, localhost fetching and the five public Anvil role keys. It is applied to
+    this process's environment (which outranks .env in read_env) and inherited by every CLI; it is
+    never written to disk or printed.
+    """
+    Account.enable_unaudited_hdwallet_features()
+    env = {"LOCAL_RPC_URL": LOCAL_RPC, "DEPLOYMENTS_FILE": LOCAL_DEPLOYMENTS_FILE, "FETCH_ALLOW_LOCALHOST": "true"}
+    for role, index in LOCAL_ROLE_INDEX.items():
+        account = Account.from_mnemonic(ANVIL_MNEMONIC, account_path=f"m/44'/60'/0'/0/{index}")
+        env[f"{role}_PK"] = "0x" + bytes(account.key).hex()
+    return env
 PENDING, CHALLENGED, FINALIZED, REJECTED, EXPIRED = 1, 2, 3, 4, 5
 ZERO = "0x" + "00" * 20
 CHALLENGE_LATENCY_STEP5_SEC = 10  # §21.5 step 5: challenged within 10 s
@@ -101,6 +119,8 @@ class World:
         self.bond = self.deployment.bond_wei
         self.addr = {role: Account.from_key(load_private_key(role, self.env).reveal()).address
                      for role in ("DEPLOYER", "ATTESTER", "MALICIOUS", "WATCHER", "RESOLVER")}
+        gate.require("resolver key matches the deployment's resolver",
+                     self.addr["RESOLVER"].lower() == self.deployment.resolver.lower())
         Account.enable_unaudited_hdwallet_features()
         extra = Account.from_mnemonic(ANVIL_MNEMONIC, account_path=f"m/44'/60'/0'/0/{EXTRA_CHALLENGER_INDEX}")
         self.addr["EXTRA"] = extra.address
@@ -430,6 +450,7 @@ def main() -> int:
     parser.add_argument("--work-dir", type=Path, required=True)
     parser.add_argument("--keep-state", action="store_true", help="do not revert the chain afterwards")
     args = parser.parse_args()
+    os.environ.update(local_test_environment())
     gate = Gate(args.work_dir)
     snapshot = None
     w = None
