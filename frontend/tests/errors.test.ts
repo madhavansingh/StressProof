@@ -56,3 +56,4 @@ describe("F4: Contract Error Decoding and §19.4 Sentences", () => {
     expect(decoded.userMessage).toBe("Only finalized claims can change the vault");
   });
 });
+

@@ -125,3 +125,4 @@ export function decodeContractError(err: any): DecodedContractError {
     rawHex: dataHex,
   };
 }
+

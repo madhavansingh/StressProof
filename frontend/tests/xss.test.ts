@@ -26,3 +26,4 @@ describe("T-F-05: XSS and URI Scheme Security", () => {
     expect(isValidExternalLink("not-a-valid-url")).toBe(false);
   });
 });
+

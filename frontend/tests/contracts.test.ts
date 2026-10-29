@@ -44,3 +44,4 @@ describe("F1: Contract Configuration and ABIs", () => {
     expect(wrongBondError).toBeDefined();
   });
 });
+
