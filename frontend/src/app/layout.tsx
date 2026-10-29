@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { MainContentWrapper } from "@/components/layout/MainContentWrapper";
+import { Web3Providers } from "@/components/providers/Web3Providers";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -28,7 +29,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${jetbrainsMono.variable} dark`}>
       <body className="min-h-screen bg-background text-foreground font-mono antialiased selection:bg-[#ea580c] selection:text-white">
-        <MainContentWrapper>{children}</MainContentWrapper>
+        <Web3Providers>
+          <MainContentWrapper>{children}</MainContentWrapper>
+        </Web3Providers>
       </body>
     </html>
   );

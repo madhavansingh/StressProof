@@ -158,7 +158,7 @@ export function RegisterAuthModal({
                 <span className="h-3 w-3 bg-[#ea580c]" />
                 <span className="h-3 w-3 bg-foreground" />
                 <span className="text-xs uppercase font-bold tracking-widest text-foreground">
-                  OPERATOR_AUTH // V1.0
+                  DEMO_OPERATOR_ROLE_SELECT // DEMO_ONLY
                 </span>
               </div>
               <button
@@ -168,6 +168,12 @@ export function RegisterAuthModal({
               >
                 <X size={16} />
               </button>
+            </div>
+
+            {/* Demo Notice Banner (Task F14) */}
+            <div className="bg-amber-950/80 border-b-2 border-amber-500 text-amber-200 px-4 py-2 text-[10px] uppercase font-bold flex items-center gap-2">
+              <span className="text-amber-400 font-black shrink-0">[!]</span>
+              <span>DEMO SIMULATION: LOCAL PRESET ONLY. NO USER ACCOUNTS OR PASSWORDS EXIST. ON-CHAIN TRANSACTIONS OCCUR DIRECTLY VIA WEB3 WALLET.</span>
             </div>
 
             {/* Content Area */}

@@ -49,6 +49,8 @@ ANVIL_MNEMONIC = "test test test test test test test test test test test junk"  
 EXTRA_CHALLENGER_INDEX = 5  # a fourth party, outside the five project roles
 PENDING, CHALLENGED, FINALIZED, REJECTED, EXPIRED = 1, 2, 3, 4, 5
 ZERO = "0x" + "00" * 20
+CHALLENGE_LATENCY_STEP5_SEC = 10  # §21.5 step 5: challenged within 10 s
+CHALLENGE_LATENCY_CRITERION_SEC = 15  # §24 criterion 4: challenged within 15 s
 
 
 class GateFailure(RuntimeError):
@@ -61,6 +63,7 @@ class Gate:
         self.results: List[Tuple[str, str, bool, str]] = []
         self.flow = "preflight"
         self.commands: List[Tuple[str, int, int]] = []
+        self.challenge_latency_sec: Optional[int] = None
 
     def check(self, name: str, ok: bool, detail: str = "") -> bool:
         self.results.append((self.flow, name, bool(ok), detail))
@@ -179,6 +182,24 @@ def watcher_record(gate: Gate, claim_id: int):
         state.close()
 
 
+def feed_kinds(w: "World", claim_id: int) -> List[str]:
+    """Kinds of the backend feed entries for one claim, read through GET /feed."""
+    kinds: List[str] = []
+    since = 0
+    while True:
+        url = f"{w.settings.backend_url.rstrip('/')}/feed?since={since}&limit=200"
+        page = json.loads(urllib.request.urlopen(url, timeout=10).read())
+        entries = page.get("entries", [])
+        kinds.extend(e["kind"] for e in entries if e.get("claimId") == str(claim_id))
+        if not entries or page.get("nextSince", since) == since:
+            return kinds
+        since = page["nextSince"]
+
+
+def block_time(w: "World", block_number: int) -> int:
+    return w.w3.eth.get_block(block_number)["timestamp"]
+
+
 # ---------------------------------------------------------------------- flows
 
 
@@ -218,6 +239,11 @@ def flow_a_honest(gate: Gate, w: World) -> None:
     gate.check("watcher recorded MATCH", record is not None and record.state == "MATCH" and record.verdict == "MATCH")
     gate.check("watcher sent no transaction", w.w3.eth.get_transaction_count(w.addr["WATCHER"]) == watcher_nonce)
     gate.check("claim not challenged", w.claim(first_id)[2] == PENDING and w.claim(first_id)[4] == ZERO)
+    kinds = feed_kinds(w, first_id)
+    gate.check("feed shows HASH_OK and REPLAY_MATCH for the honest claim",
+               "HASH_OK" in kinds and "REPLAY_MATCH" in kinds, ",".join(kinds))
+    gate.check("feed shows no challenge for the honest claim",
+               not any(k.startswith("CHALLENGE") for k in kinds), ",".join(kinds))
 
     gate.check("70% borrow succeeds before the claim is applied",
                _borrow_ok(w, 10_000 * 10**8, 7_000 * 10**8))
@@ -262,6 +288,14 @@ def flow_b_malicious(gate: Gate, w: World) -> int:
     watcher_balance0, watcher_from = w.w3.eth.get_balance(w.addr["WATCHER"]), w.w3.eth.block_number + 1
     watcher_poll(gate, "watcher-poll-B")
     _assert_wrong_result_challenge(gate, w, claim_id)
+    (challenged,) = w.events(w.reader.registry, "ClaimChallenged", start, claim_id) or [None]
+    gate.require("ClaimChallenged emitted", challenged is not None)
+    latency = block_time(w, challenged.blockNumber) - block_time(w, posted.blockNumber)
+    gate.check(f"challenge landed within {CHALLENGE_LATENCY_STEP5_SEC} s of the post (chain time)",
+               0 <= latency <= CHALLENGE_LATENCY_STEP5_SEC, f"{latency} s")
+    gate.check(f"challenge landed within {CHALLENGE_LATENCY_CRITERION_SEC} s of the post (chain time)",
+               0 <= latency <= CHALLENGE_LATENCY_CRITERION_SEC, f"{latency} s")
+    gate.challenge_latency_sec = latency
 
     run_cli(gate, "resolver-check-B", "stressproof_agents.resolver.cli", ["check", str(claim_id)])
     out = run_cli(gate, "resolver-expire-too-early", "stressproof_agents.resolver.cli", ["expire", str(claim_id)], expect=1)
@@ -418,6 +452,7 @@ def main() -> int:
             reverted = w.w3.provider.make_request("evm_revert", [snapshot]).get("result")
             print(f"chain reverted to the starting snapshot: {reverted}")
     summary = {"passed": gate.passed, "checks": len(gate.results),
+               "challengeLatencySec": gate.challenge_latency_sec,
                "failed": [f"{f}: {n} {d}" for f, n, ok, d in gate.results if not ok],
                "commands": [{"command": c, "exit": e, "expected": x} for c, e, x in gate.commands]}
     (args.work_dir / "gate24-summary.json").write_text(json.dumps(summary, indent=2))

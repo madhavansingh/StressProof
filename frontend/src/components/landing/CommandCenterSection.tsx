@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { motion } from "framer-motion";
 import {
   ArrowRight,
   Shield,
@@ -96,8 +97,14 @@ export function CommandCenterSection() {
   };
 
   return (
-    <section id="command-center" className="w-full px-6 py-20 lg:px-16 border-t-2 border-foreground bg-card/60 font-mono">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <section id="command-center" className="w-full px-6 py-20 lg:px-16 border-t-2 border-foreground bg-card/60 font-mono scroll-mt-24">
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-60px" }}
+        transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+        className="max-w-6xl mx-auto space-y-8"
+      >
         {/* Section Header */}
         <div className="flex items-center gap-4">
           <span className="text-[10px] tracking-[0.2em] uppercase text-muted-foreground">
@@ -304,7 +311,7 @@ export function CommandCenterSection() {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 }

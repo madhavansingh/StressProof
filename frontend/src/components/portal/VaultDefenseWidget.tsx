@@ -1,46 +1,97 @@
 "use client";
 
-import { Shield, Lock, AlertCircle, CheckCircle2, PauseCircle } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { Shield, Lock, AlertCircle, CheckCircle2, PauseCircle, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
-
-interface DefenseMilestone {
-  id: string;
-  title: string;
-  subtitle: string;
-  status: "active" | "armed" | "triggered";
-  threshold: string;
-  progress: number;
-}
-
-const DEFENSE_MILESTONES: DefenseMilestone[] = [
-  {
-    id: "def-1",
-    title: "DYNAMIC LTV REDUCTION (80% → 50%)",
-    subtitle: "Triggered automatically by Claim #1 residual bad debt",
-    status: "triggered",
-    threshold: "THRESHOLD: $1,000 BAD DEBT",
-    progress: 100,
-  },
-  {
-    id: "def-2",
-    title: "EMERGENCY BORROW PAUSE CIRCUIT BREAKER",
-    subtitle: "Halts all new borrowings across monitored markets",
-    status: "armed",
-    threshold: "THRESHOLD: $4,000 BAD DEBT",
-    progress: 50,
-  },
-  {
-    id: "def-3",
-    title: "DISPUTE CHALLENGE WINDOW (OPTIMISTIC)",
-    subtitle: "Counter-bond verification and replayer cross-check",
-    status: "active",
-    threshold: "WINDOW: 120 SECONDS (DEMO)",
-    progress: 85,
-  },
-];
+import { useAccount, usePublicClient } from "wagmi";
+import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 
 export function VaultDefenseWidget({ className = "" }: { className?: string }) {
+  const { chainId } = useAccount();
+  const effectiveChainId = chainId || ACTIVE_CHAIN_ID;
+  const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
+  const publicClient = usePublicClient({ chainId: effectiveChainId });
+
+  const [maxLtvBps, setMaxLtvBps] = useState<number>(8000);
+  const [borrowPaused, setBorrowPaused] = useState<boolean>(false);
+  const [lastAppliedClaimId, setLastAppliedClaimId] = useState<bigint>(0n);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchVaultState() {
+      if (!publicClient) return;
+      try {
+        const [maxLtv, paused, lastApplied] = await Promise.all([
+          publicClient.readContract({
+            address: config.vault.address,
+            abi: config.vault.abi,
+            functionName: "maxLtvBps",
+          }),
+          publicClient.readContract({
+            address: config.vault.address,
+            abi: config.vault.abi,
+            functionName: "borrowPaused",
+          }),
+          publicClient.readContract({
+            address: config.vault.address,
+            abi: config.vault.abi,
+            functionName: "lastAppliedClaimId",
+          }),
+        ]);
+
+        if (mounted) {
+          setMaxLtvBps(Number(maxLtv as bigint | number));
+          setBorrowPaused(Boolean(paused));
+          setLastAppliedClaimId(BigInt(lastApplied as bigint | number));
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    fetchVaultState();
+    const interval = setInterval(fetchVaultState, 4000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [publicClient, config]);
+
+  const isLtvTightened = maxLtvBps <= 5000;
+
+  const milestones = [
+    {
+      id: "def-1",
+      title: "DYNAMIC LTV REDUCTION (80% → 50%)",
+      subtitle: isLtvTightened
+        ? `Triggered automatically on chain by Claim #${lastAppliedClaimId.toString()}`
+        : "Armed — will tighten to 50% upon finalized bad debt >= $1,000",
+      status: isLtvTightened ? "triggered" : "armed",
+      threshold: "THRESHOLD: $1,000 BAD DEBT",
+      progress: isLtvTightened ? 100 : 0,
+    },
+    {
+      id: "def-2",
+      title: "EMERGENCY BORROW PAUSE CIRCUIT BREAKER",
+      subtitle: borrowPaused
+        ? "Emergency pause active — all new borrowings halted"
+        : "Armed — will trip circuit breaker upon bad debt >= $4,000",
+      status: borrowPaused ? "triggered" : "armed",
+      threshold: "THRESHOLD: $4,000 BAD DEBT",
+      progress: borrowPaused ? 100 : 0,
+    },
+    {
+      id: "def-3",
+      title: "OPTIMISTIC DISPUTE WINDOW",
+      subtitle: "120-second challenge window with 0.01 ETH bonded stake",
+      status: "active",
+      threshold: `WINDOW: ${config.challengeWindowSec} SECONDS`,
+      progress: 100,
+    },
+  ];
+
   return (
     <div className={`w-full flex flex-col justify-between space-y-4 font-mono ${className}`}>
       {/* Top Header */}
@@ -58,93 +109,80 @@ export function VaultDefenseWidget({ className = "" }: { className?: string }) {
             </p>
           </div>
         </div>
-        <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 border border-border bg-secondary text-[10px] sm:text-[11px] font-bold text-emerald-400">
-          <span>[SYSTEM_ARMED]</span>
+
+        <Link
+          href="/vault"
+          className="text-xs uppercase font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 group shrink-0"
+        >
+          <span>MANAGE_CONTROLS</span>
+          <Lock className="h-3 w-3 group-hover:text-[#ea580c] transition-colors" />
+        </Link>
+      </div>
+
+      {/* Defense Parameters Grid */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="p-3 bg-secondary border border-border">
+          <span className="text-[10px] text-muted-foreground uppercase block">ACTIVE_MAX_LTV</span>
+          <p className="text-xl sm:text-2xl font-bold text-[#ea580c]">
+            {(maxLtvBps / 100).toFixed(2)}%
+          </p>
+          <span className="text-[10px] text-muted-foreground uppercase">
+            {isLtvTightened ? "TIGHTENED_CIRCUIT" : "BASELINE (80.00%)"}
+          </span>
+        </div>
+
+        <div className="p-3 bg-secondary border border-border">
+          <span className="text-[10px] text-muted-foreground uppercase block">CIRCUIT_STATUS</span>
+          <p className="text-xl sm:text-2xl font-bold text-foreground">
+            {borrowPaused ? "HALTED" : "OPERATIONAL"}
+          </p>
+          <span className="text-[10px] text-muted-foreground uppercase">
+            {borrowPaused ? "PAUSE_ACTIVE" : "ALL_CHECKS_NORMAL"}
+          </span>
         </div>
       </div>
 
-      {/* Defense Actions List */}
-      <div className="space-y-2.5">
-        {DEFENSE_MILESTONES.map((item) => {
-          const isTriggered = item.status === "triggered";
-          const isArmed = item.status === "armed";
+      {/* Milestones List */}
+      <div className="border-2 border-border bg-card divide-y-2 divide-border">
+        {milestones.map((m) => {
+          const isTriggered = m.status === "triggered";
 
           return (
-            <div
-              key={item.id}
-              className={`p-3 sm:p-3.5 border transition-all ${
-                isTriggered
-                  ? "border-[#ea580c] bg-[#ea580c]/5"
-                  : isArmed
-                  ? "border-border bg-background hover:border-foreground"
-                  : "border-border bg-background/50"
-              }`}
-            >
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-3">
-                <div className="flex items-start gap-2.5 sm:gap-3 min-w-0 flex-1">
-                  <div
-                    className={`mt-0.5 h-6 w-6 shrink-0 border flex items-center justify-center text-xs ${
-                      isTriggered
-                        ? "border-[#ea580c] bg-[#ea580c] text-background font-bold"
-                        : "border-border bg-secondary text-foreground"
-                    }`}
-                  >
-                    {isTriggered ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+            <div key={m.id} className="p-3 sm:p-4 hover:bg-secondary/40 transition-colors space-y-2">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    {isTriggered ? (
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+                    ) : (
+                      <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    )}
+                    <span className="text-xs sm:text-sm font-bold text-foreground truncate">
+                      {m.title}
+                    </span>
                   </div>
-                  <div className="min-w-0">
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                      <p className="text-xs font-bold text-foreground uppercase tracking-wider break-words">
-                        {item.title}
-                      </p>
-                      <span
-                        className={`text-[9px] px-1 border uppercase font-bold shrink-0 ${
-                          isTriggered
-                            ? "border-[#ea580c] text-[#ea580c]"
-                            : isArmed
-                            ? "border-amber-500 text-amber-400"
-                            : "border-border text-muted-foreground"
-                        }`}
-                      >
-                        [{item.status}]
-                      </span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground uppercase mt-0.5">
-                      {item.subtitle}
-                    </p>
-                  </div>
+                  <p className="text-[10px] text-muted-foreground uppercase mt-0.5">
+                    {m.subtitle}
+                  </p>
                 </div>
 
-                <span className="text-[10px] text-muted-foreground uppercase sm:whitespace-nowrap shrink-0">
-                  {item.threshold}
+                <span
+                  className={`px-1.5 py-0.5 border text-[9px] font-bold uppercase shrink-0 ${
+                    isTriggered
+                      ? "border-emerald-500 bg-emerald-950/40 text-emerald-400"
+                      : "border-border bg-secondary text-muted-foreground"
+                  }`}
+                >
+                  [{m.status}]
                 </span>
               </div>
 
-              {/* Brutalist Progress Meter */}
-              <div className="mt-3 flex items-center gap-2">
-                <div className="flex-1 h-2 bg-secondary border border-border overflow-hidden">
-                  <div
-                    className={`h-full ${
-                      isTriggered ? "bg-[#ea580c]" : isArmed ? "bg-foreground" : "bg-muted-foreground"
-                    }`}
-                    style={{ width: `${item.progress}%` }}
-                  />
-                </div>
-                <span className="text-[10px] font-bold text-foreground shrink-0">{item.progress}%</span>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>{m.threshold}</span>
               </div>
             </div>
           );
         })}
-      </div>
-
-      {/* Footer */}
-      <div className="pt-2">
-        <Link
-          href="/vault"
-          className="flex flex-wrap items-center justify-between gap-2 p-2.5 border border-dashed border-border bg-muted/10 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-foreground transition-all"
-        >
-          <span>INTERACT_WITH_DEMOVAULT &rarr;</span>
-          <span className="text-[#ea580c] font-bold">[CONTRACT_CONTROLS]</span>
-        </Link>
       </div>
     </div>
   );
