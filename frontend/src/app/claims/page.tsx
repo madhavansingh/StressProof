@@ -6,7 +6,11 @@ import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionRec
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown } from "@/lib/claims";
 import { formatUsd8, formatAddress } from "@/lib/format";
-import { formatEther, keccak256, toHex } from "viem";
+import { formatEther, keccak256 } from "viem";
+import { checkWriteReadiness, describeWalletError } from "@/lib/web3/walletPolicy";
+import { isConfiguredChainId, type ConfiguredChainId } from "@/lib/web3/wagmi";
+import { txPhase, txPhaseLabel } from "@/lib/web3/txStatus";
+import { isFetchableEvidenceUrl, resolveUri } from "@/lib/validation/verify";
 import {
   ShieldAlert,
   Clock,
@@ -20,8 +24,9 @@ import {
 } from "lucide-react";
 
 export default function ClaimsPage() {
-  const { isConnected, chainId: currentChainId } = useAccount();
-  const effectiveChainId = currentChainId || ACTIVE_CHAIN_ID;
+  const { isConnected, address, chainId: currentChainId } = useAccount();
+  const [guardError, setGuardError] = useState<string | null>(null);
+  const effectiveChainId = ACTIVE_CHAIN_ID; // reads always use the deployment chain, never the wallet's chain
   const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
   const publicClient = usePublicClient({ chainId: effectiveChainId });
 
@@ -40,7 +45,34 @@ export default function ClaimsPage() {
 
   // Write operations
   const { data: writeTxHash, writeContract, isPending: isWritePending, error: writeError, reset: resetWrite } = useWriteContract();
-  const { isLoading: isTxConfirming, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({ hash: writeTxHash });
+  const { data: txReceipt, isLoading: isTxConfirming, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({ hash: writeTxHash });
+  const writePhase = txPhase({
+    simulationPassed: false,
+    awaitingSignature: isWritePending,
+    hash: writeTxHash,
+    receiptStatus: txReceipt?.status,
+  });
+
+  /** Connected wallet on the deployment chain, or a message and no write. */
+  function writeChainOrNull(): ConfiguredChainId | null {
+    const ready = checkWriteReadiness({
+      isConnected,
+      address,
+      walletChainId: currentChainId,
+      targetChainId: ACTIVE_CHAIN_ID,
+      contractAddress: config.registry.address,
+    });
+    if (!ready.ok) {
+      setGuardError(ready.message);
+      return null;
+    }
+    if (!isConfiguredChainId(ready.chainId)) {
+      setGuardError(`Nothing sent: chain ${ready.chainId} is not configured in this build.`);
+      return null;
+    }
+    setGuardError(null);
+    return ready.chainId;
+  }
 
   // Main data loader from contract
   const loadClaims = useCallback(async () => {
@@ -135,7 +167,10 @@ export default function ClaimsPage() {
 
   function handleFinalize(id: bigint) {
     resetWrite();
+    const chainId = writeChainOrNull();
+    if (chainId === null) return;
     writeContract({
+      chainId,
       address: config.registry.address,
       abi: config.registry.abi,
       functionName: "finalize",
@@ -145,7 +180,10 @@ export default function ClaimsPage() {
 
   function handleExpire(id: bigint) {
     resetWrite();
+    const chainId = writeChainOrNull();
+    if (chainId === null) return;
     writeContract({
+      chainId,
       address: config.registry.address,
       abi: config.registry.abi,
       functionName: "expireUnresolved",
@@ -153,19 +191,37 @@ export default function ClaimsPage() {
     });
   }
 
-  function submitChallenge() {
+  async function submitChallenge() {
     if (!activeModalClaim) return;
     resetWrite();
+    const chainId = writeChainOrNull();
+    if (chainId === null) return;
 
     const reasonCode = challengeReason === "WRONG_RESULT" ? 1 : 2;
     const counterDebt = challengeReason === "WRONG_RESULT" ? BigInt(counterDebtInput || "0") : 0n;
-    const reportHash = keccak256(toHex(reportURIInput || "report_bytes"));
+
+    // The challenge commits to the report's bytes, so hash what the URI actually serves.
+    const reportUrl = resolveUri(reportURIInput.trim());
+    if (!isFetchableEvidenceUrl(reportUrl)) {
+      setGuardError("Nothing sent: the report URI must be https://, ipfs:// or local-development http://.");
+      return;
+    }
+    let reportHash: `0x${string}`;
+    try {
+      const res = await fetch(reportUrl, { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      reportHash = keccak256(new Uint8Array(await res.arrayBuffer()));
+    } catch (err: unknown) {
+      setGuardError(`Nothing sent: could not fetch the report to hash it (${err instanceof Error ? err.message : "error"}).`);
+      return;
+    }
 
     writeContract({
+      chainId,
       address: config.registry.address,
       abi: config.registry.abi,
       functionName: "challenge",
-      args: [activeModalClaim.id, reasonCode, counterDebt, reportURIInput, reportHash],
+      args: [activeModalClaim.id, reasonCode, counterDebt, reportURIInput.trim(), reportHash],
       value: config.bondWei,
     });
 
@@ -211,16 +267,36 @@ export default function ClaimsPage() {
       </div>
 
       {/* Transaction Status Notice */}
+      {guardError && (
+        <div className="p-3 border-2 border-amber-500 bg-amber-950/40 text-amber-200 text-xs flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
+            <span>{guardError}</span>
+          </div>
+          <button onClick={() => setGuardError(null)} className="text-amber-400 hover:text-white uppercase font-bold text-[10px]">
+            [DISMISS]
+          </button>
+        </div>
+      )}
+
       {writeTxHash && (
-        <div className="p-3 border-2 border-emerald-500 bg-emerald-950/40 text-emerald-300 text-xs flex items-center justify-between">
+        <div
+          className={`p-3 border-2 text-xs flex items-center justify-between ${
+            writePhase === "mined-reverted"
+              ? "border-red-500 bg-red-950/40 text-red-300"
+              : "border-emerald-500 bg-emerald-950/40 text-emerald-300"
+          }`}
+        >
           <div className="flex items-center gap-2">
             {isTxConfirming ? (
               <Loader2 className="h-4 w-4 animate-spin text-emerald-400" />
+            ) : writePhase === "mined-reverted" ? (
+              <AlertTriangle className="h-4 w-4 text-red-400" />
             ) : (
               <CheckCircle2 className="h-4 w-4 text-emerald-400" />
             )}
             <span>
-              TRANSACTION_{isTxConfirming ? "PENDING" : "CONFIRMED"}: <code>{writeTxHash.slice(0, 16)}...</code>
+              {txPhaseLabel(writePhase)}: <code>{writeTxHash.slice(0, 16)}...</code>
             </span>
           </div>
           <button onClick={() => resetWrite()} className="text-emerald-400 hover:text-white uppercase font-bold text-[10px]">
@@ -233,7 +309,7 @@ export default function ClaimsPage() {
         <div className="p-3 border-2 border-red-500 bg-red-950/40 text-red-300 text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">
             <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
-            <span className="break-all">{writeError.message.slice(0, 160)}...</span>
+            <span className="break-all">{describeWalletError(writeError).message}</span>
           </div>
           <button onClick={() => resetWrite()} className="text-red-400 hover:text-white uppercase font-bold text-[10px]">
             [DISMISS]
@@ -249,7 +325,8 @@ export default function ClaimsPage() {
             RPC_CONNECTIVITY_WARNING
           </div>
           <p className="text-[11px] text-amber-300 uppercase leading-relaxed">
-            Unable to connect to registry at <code>{config.registry.address}</code> on Chain ID {effectiveChainId}. Ensure local Anvil is running on port 8546.
+            Unable to read the registry at <code>{config.registry.address}</code> on chain {effectiveChainId}. Check the
+            configured RPC endpoint.{claims.length > 0 ? " The rows below are the last successful read." : ""}
           </p>
         </div>
       )}
@@ -258,7 +335,7 @@ export default function ClaimsPage() {
       <div className="bg-card border-2 border-border">
         <div className="px-5 py-3 border-b-2 border-border bg-muted/20 flex flex-wrap items-center justify-between gap-2">
           <span className="text-xs font-bold uppercase tracking-widest text-foreground">
-            // REGISTRY_LEDGER ({claims.length}_RECORDS)
+            // REGISTRY_LEDGER ({rpcError && claims.length === 0 ? "UNAVAILABLE" : `${claims.length}_RECORDS`})
           </span>
           <div className="flex items-center gap-4 text-[10px] text-muted-foreground uppercase">
             <span>REGISTRY: {formatAddress(config.registry.address)}</span>
@@ -271,6 +348,11 @@ export default function ClaimsPage() {
             <div className="p-12 text-center text-xs text-muted-foreground uppercase space-y-2">
               <Loader2 className="h-6 w-6 animate-spin mx-auto text-[#ea580c]" />
               <p>QUERYING CONTRACT LEDGER VIA RPC...</p>
+            </div>
+          ) : rpcError && claims.length === 0 ? (
+            <div className="p-12 text-center text-xs text-muted-foreground uppercase space-y-2">
+              <ShieldAlert className="h-8 w-8 mx-auto text-amber-400" />
+              <p className="text-foreground font-bold">CLAIMS UNAVAILABLE: THE REGISTRY COULD NOT BE READ</p>
             </div>
           ) : claims.length === 0 ? (
             <div className="p-12 text-center text-xs text-muted-foreground uppercase space-y-2">

@@ -4,8 +4,9 @@
 # Documented initial state:
 #   - Anvil on 127.0.0.1:8546, chain 31337 (`make chain`, or `anvil --port 8546`)
 #   - the contracts from deployments/31337.json deployed there (`make deploy-local`)
-#   - .env with the five Anvil test keys (DEPLOYER/ATTESTER/MALICIOUS/WATCHER/RESOLVER_PK) and
-#     LOCAL_RPC_URL=http://127.0.0.1:8546; FETCH_ALLOW_LOCALHOST=true
+#   - no personal .env is needed: scripts/gate24.py supplies the local RPC, deployments/31337.json,
+#     localhost fetching and the five public Anvil role keys (#0 deployer, #1 resolver, #2 attester,
+#     #3 watcher, #4 malicious) to its own process only. Nothing from a .env can redirect the run.
 #   - port 8000 free: this script starts its own backend
 #
 # What it does: starts the backend with all data in a temporary folder, then runs scripts/gate24.py,
@@ -17,7 +18,8 @@
 # Isolation: the test backend gets DATABASE_URL= (empty), which overrides any value in .env and
 # selects filesystem storage under the temporary folder; the run aborts unless /health reports
 # "storage": "filesystem". The agents get BACKEND_URL pointing at this local backend, so a deployed
-# backend named in .env is never used.
+# backend named in .env is never used. The backend and the agents share a random write token made
+# for this run only, so the production API_WRITE_TOKEN in .env is never used either.
 #
 # Options: --keep-state (do not revert the chain), --keep-artifacts (keep the temporary folder).
 # Exit code 0 only if every check passed.
@@ -40,7 +42,6 @@ done
 
 cd "$REPO_ROOT"
 [ -x "$PYTHON" ] || { echo "ERROR: $PYTHON not found; run 'uv sync' first" >&2; exit 1; }
-[ -f .env ] || { echo "ERROR: .env not found (see the initial state above)" >&2; exit 1; }
 if "$PYTHON" -c "import socket,sys; s=socket.socket(); sys.exit(0 if s.connect_ex(('$BACKEND_HOST',$BACKEND_PORT)) else 1)"; then
     : # port free
 else
@@ -57,7 +58,8 @@ cleanup() {
 trap cleanup EXIT
 
 echo "==> GATE-24 local run (work dir $WORK_DIR)"
-DATABASE_URL= DATA_DIR="$WORK_DIR/backend-data" BACKEND_PUBLIC_URL="$BACKEND_URL" PYTHONDONTWRITEBYTECODE=1 \
+RUN_TOKEN="$("$PYTHON" -c "import secrets; print(secrets.token_hex(32))")"  # this run only; never printed
+API_WRITE_TOKEN="$RUN_TOKEN" DATABASE_URL= DATA_DIR="$WORK_DIR/backend-data" BACKEND_PUBLIC_URL="$BACKEND_URL" PYTHONDONTWRITEBYTECODE=1 \
     "$PYTHON" -B -m uvicorn stressproof_backend.main:app --host "$BACKEND_HOST" --port "$BACKEND_PORT" \
     >"$WORK_DIR/backend.log" 2>&1 &
 BACKEND_PID=$!
@@ -77,4 +79,4 @@ if [ "$STORAGE" != "filesystem" ]; then
 fi
 echo "==> backend storage: filesystem ($WORK_DIR/backend-data)"
 
-BACKEND_URL="$BACKEND_URL" BACKEND_PUBLIC_URL="$BACKEND_URL" PYTHONDONTWRITEBYTECODE=1 "$PYTHON" -B scripts/gate24.py --work-dir "$WORK_DIR" ${DRIVER_ARGS[@]+"${DRIVER_ARGS[@]}"}
+API_WRITE_TOKEN="$RUN_TOKEN" BACKEND_URL="$BACKEND_URL" BACKEND_PUBLIC_URL="$BACKEND_URL" PYTHONDONTWRITEBYTECODE=1 "$PYTHON" -B scripts/gate24.py --work-dir "$WORK_DIR" ${DRIVER_ARGS[@]+"${DRIVER_ARGS[@]}"}

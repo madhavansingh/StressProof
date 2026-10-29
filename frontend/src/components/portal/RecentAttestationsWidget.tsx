@@ -10,7 +10,7 @@ import { formatUsd8, formatAddress } from "@/lib/format";
 
 export function RecentAttestationsWidget({ className = "" }: { className?: string }) {
   const { chainId } = useAccount();
-  const effectiveChainId = chainId || ACTIVE_CHAIN_ID;
+  const effectiveChainId = ACTIVE_CHAIN_ID; // reads always use the deployment chain, never the wallet's chain
   const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
   const publicClient = usePublicClient({ chainId: effectiveChainId });
 

@@ -20,6 +20,7 @@ import {
 import { RegisterAuthModal, type OperatorSession } from "./RegisterAuthModal";
 import { CommandCenterSection } from "./CommandCenterSection";
 import { BrutalistPageLoader } from "./BrutalistPageLoader";
+import { LandingConnectWallet } from "./LandingConnectWallet";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -125,7 +126,7 @@ const TERMINAL_LOGS = [
   "> [LIQUIDATION] Borrower 0x3d4... health factor breached: 0.82 HF",
   "> [WATERFALL] Liquidating collateral: 50.0 WETH seized",
   "> [CALCULATION] Residual unhedged bad debt: $2,000.00 (200000000001 USD8)",
-  "> [HASH] Generating content-addressed case file: SHA-256 0x7f427d...25f0",
+  "> [HASH] Generating content-addressed case file: Keccak-256 0x7f427d...25f0",
   "> [REGISTRY] Bonded claim #1 posted on Base Sepolia (Stake: 0.01 ETH)",
   "> [OPTIMISTIC] 120s dispute window opened. Zero counter-bonds submitted",
   "> [SETTLEMENT] Claim #1 finalized. Attester credited 0.01 ETH bond",
@@ -269,15 +270,7 @@ export function LandingPage() {
                 <span>REGISTER</span>
               )}
             </button>
-            <Link
-              href="/dashboard"
-              className="group flex items-center gap-0 bg-foreground text-background text-xs font-bold uppercase tracking-wider border-2 border-foreground hover:bg-[#ea580c] hover:border-[#ea580c] hover:text-white transition-all shadow-[2px_2px_0px_0px_hsl(var(--border))]"
-            >
-              <span className="flex items-center justify-center w-7 h-7 bg-[#ea580c] text-background group-hover:bg-foreground group-hover:text-background transition-colors">
-                <ArrowRight size={14} />
-              </span>
-              <span className="px-3 py-1.5">ENTER APP</span>
-            </Link>
+            <LandingConnectWallet />
           </div>
         </nav>
       </header>
@@ -607,7 +600,7 @@ export function LandingPage() {
                 CONTENT-ADDRESSED EVIDENCE
               </h3>
               <p className="text-xs text-muted-foreground uppercase leading-relaxed">
-                Every claim commits to a SHA-256 evidence hash covering the entire execution trace, parameter set, and borrower portfolio snapshot.
+                Every claim commits to a Keccak-256 evidence hash of the canonical case file: scenario, parameters, borrower snapshot and replay results.
               </p>
             </motion.div>
 

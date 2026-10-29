@@ -16,6 +16,25 @@ export function resolveUri(uri: string, gateway: string = DEFAULT_IPFS_GATEWAY):
   return uri;
 }
 
+const BYTES32_HEX = /^0x[0-9a-fA-F]{64}$/;
+const LOCAL_DEV_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
+
+/**
+ * Only https URLs are fetched, plus plain http to a local development host (mirrors the agents'
+ * fetcher, plan §16.3 and S-11). caseFileURI and replayReportURI are chosen by whoever posts on
+ * chain, so data:, javascript:, ftp: and http to other hosts are refused before any request.
+ */
+export function isFetchableEvidenceUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  if (parsed.protocol === "https:") return true;
+  return parsed.protocol === "http:" && LOCAL_DEV_HOSTS.has(parsed.hostname);
+}
+
 export interface VerificationResult {
   valid: boolean;
   computedHash: string;
@@ -78,7 +97,24 @@ export async function verifyEvidenceUri(
     };
   }
 
+  if (!BYTES32_HEX.test(expectedHash.trim())) {
+    return {
+      valid: false,
+      computedHash: "",
+      expectedHash,
+      error: "Expected hash is not a 32-byte hex value",
+    };
+  }
+
   const resolved = resolveUri(uri);
+  if (!isFetchableEvidenceUrl(resolved)) {
+    return {
+      valid: false,
+      computedHash: "",
+      expectedHash,
+      error: "Unsupported evidence URI: only https://, ipfs:// and local-development http:// are fetched",
+    };
+  }
 
   try {
     const res = await fetch(resolved, {

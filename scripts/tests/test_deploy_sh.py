@@ -180,6 +180,69 @@ def test_testnet_unconfirmed_deployment_is_never_verified(tmp_path):
     assert [c.split()[0] for c in _calls(log)] == ["forge", "uv"]
 
 
+# ---- no silent duplicate deployments on testnet ----
+
+PLACEHOLDER = '{"chainId": 84532, "registry": "0x0000000000000000000000000000000000000000"}\n'
+DEPLOYED = '{"chainId": 84532, "registry": "0x5FbDB2315678afecb367f032d93F642f64180aa3"}\n'
+
+
+def _dirs(tmp_path: Path, deployments_json: str, with_broadcast: bool) -> dict:
+    deployments = tmp_path / "deployments"
+    deployments.mkdir()
+    (deployments / "84532.json").write_text(deployments_json)
+    broadcast = tmp_path / "broadcast"
+    if with_broadcast:
+        (broadcast / "84532").mkdir(parents=True)
+        (broadcast / "84532" / "run-latest.json").write_text("{}")
+    return {"DEPLOYMENTS_DIR": str(deployments), "BROADCAST_DIR": str(broadcast)}
+
+
+def _testnet(tmp_path: Path, log: Path, **env: str) -> subprocess.CompletedProcess:
+    return _run("testnet", ENV_FILE=str(_testnet_env(tmp_path)), GIT=str(_clean_git(tmp_path)),
+                FORGE=str(_logging_stub(tmp_path, "forge", log)), UV=str(_logging_stub(tmp_path, "uv", log)), **env)
+
+
+def test_testnet_refuses_to_redeploy_over_a_recorded_deployment(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _testnet(tmp_path, log, **_dirs(tmp_path, DEPLOYED, with_broadcast=True))
+    assert result.returncode == 1
+    assert "already records a deployment" in result.stderr and "REDEPLOY=1" in result.stderr
+    assert _calls(log) == []
+
+
+def test_testnet_refuses_to_broadcast_again_over_an_unrecorded_broadcast(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _testnet(tmp_path, log, **_dirs(tmp_path, PLACEHOLDER, with_broadcast=True))
+    assert result.returncode == 1
+    assert "unrecorded broadcast" in result.stderr and "RECORD_ONLY=1" in result.stderr
+    assert _calls(log) == []
+
+
+def test_record_only_records_the_existing_broadcast_without_sending(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _testnet(tmp_path, log, RECORD_ONLY="1", **_dirs(tmp_path, PLACEHOLDER, with_broadcast=True))
+    assert result.returncode == 0, result.stderr
+    calls = _calls(log)
+    assert [c.split()[0] for c in calls] == ["uv", "forge"]
+    assert "--not-before 0" in calls[0]
+    assert "--resume" in calls[1] and "--broadcast" not in calls[1]
+
+
+def test_record_only_without_a_broadcast_record_fails(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _testnet(tmp_path, log, RECORD_ONLY="1", **_dirs(tmp_path, PLACEHOLDER, with_broadcast=False))
+    assert result.returncode == 1
+    assert "no broadcast record" in result.stderr
+    assert _calls(log) == []
+
+
+def test_redeploy_flag_allows_a_new_deployment(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _testnet(tmp_path, log, REDEPLOY="1", **_dirs(tmp_path, DEPLOYED, with_broadcast=True))
+    assert result.returncode == 0, result.stderr
+    assert [c.split()[0] for c in _calls(log)] == ["forge", "uv", "forge"]
+
+
 def test_local_deploy_never_verifies(tmp_path):
     log = tmp_path / "calls.log"
     result = _run("local", ENV_FILE=str(_env_file(tmp_path)), GIT=str(_clean_git(tmp_path)),

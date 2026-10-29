@@ -1,4 +1,4 @@
-import { decodeErrorResult } from "viem";
+import { BaseError, ContractFunctionRevertedError, decodeErrorResult, type Hex } from "viem";
 import { DemoVaultAbi, MockLendingMarketAbi, IStressRegistryAbi } from "@/lib/contracts";
 
 const COMBINED_ABI = [
@@ -15,13 +15,26 @@ export interface DecodedContractError {
 }
 
 /**
+ * Raw revert data from a viem error chain. simulateContract and writeContract throw a
+ * ContractFunctionExecutionError whose cause is a ContractFunctionRevertedError: its `data` is
+ * already a decoded object, and the original bytes are in `raw`.
+ */
+export function revertDataFromViemError(err: unknown): Hex | undefined {
+  if (!(err instanceof BaseError)) return undefined;
+  const reverted = err.walk((e) => e instanceof ContractFunctionRevertedError);
+  return reverted instanceof ContractFunctionRevertedError ? reverted.raw : undefined;
+}
+
+/**
  * Decodes contract revert data or viem error object into human-readable spec sentences per §19.4.
  */
 export function decodeContractError(err: any): DecodedContractError {
   // Extract hex error data if present
-  let dataHex: `0x${string}` | undefined;
+  let dataHex: `0x${string}` | undefined = revertDataFromViemError(err);
 
-  if (typeof err === "string" && err.startsWith("0x")) {
+  if (dataHex) {
+    // Found in the viem error chain
+  } else if (typeof err === "string" && err.startsWith("0x")) {
     dataHex = err as `0x${string}`;
   } else if (err?.data && typeof err.data === "string" && err.data.startsWith("0x")) {
     dataHex = err.data;
