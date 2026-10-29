@@ -151,8 +151,9 @@ def test_testnet_broadcasts_without_verify_then_records_then_verifies(tmp_path):
                   FORGE=str(_logging_stub(tmp_path, "forge", log)), UV=str(_logging_stub(tmp_path, "uv", log)))
     assert result.returncode == 0, result.stderr
     calls = _calls(log)
-    assert [c.split()[0] for c in calls] == ["forge", "uv", "forge"]
-    broadcast, record, verify = calls
+    assert [c.split()[0] for c in calls] == ["uv", "forge", "uv", "forge"]
+    preflight, broadcast, record, verify = calls
+    assert "testnet_preflight.py" in preflight and "--keys-only" in preflight
     assert "--broadcast" in broadcast and "--verify" not in broadcast
     assert "write_deployment.py" in record and "--chain-id 84532" in record
     assert "--resume" in verify and "--verify" in verify and "--broadcast" not in verify
@@ -174,10 +175,38 @@ def test_testnet_unconfirmed_deployment_is_never_verified(tmp_path):
     log = tmp_path / "calls.log"
     result = _run("testnet", ENV_FILE=str(_testnet_env(tmp_path)), GIT=str(_clean_git(tmp_path)),
                   FORGE=str(_logging_stub(tmp_path, "forge", log)),
-                  UV=str(_logging_stub(tmp_path, "uv", log, exit_code=1)))
+                  UV=str(_logging_stub(tmp_path, "uv", log, fail_when="write_deployment")))
     assert result.returncode == 1
     assert "could not be confirmed" in result.stderr
-    assert [c.split()[0] for c in _calls(log)] == ["forge", "uv"]
+    assert [c.split()[0] for c in _calls(log)] == ["uv", "forge", "uv"]
+
+
+def test_testnet_preflight_failure_stops_before_any_broadcast(tmp_path):
+    log = tmp_path / "calls.log"
+    result = _run("testnet", ENV_FILE=str(_testnet_env(tmp_path)), GIT=str(_clean_git(tmp_path)),
+                  FORGE=str(_logging_stub(tmp_path, "forge", log)),
+                  UV=str(_logging_stub(tmp_path, "uv", log, fail_when="testnet_preflight")))
+    assert result.returncode == 1
+    assert "testnet preflight failed" in result.stderr
+    assert "Deployments file NOT written" in result.stderr
+    calls = _calls(log)
+    assert len(calls) == 1 and "testnet_preflight.py" in calls[0]
+    assert not any(c.startswith("forge") for c in calls)
+
+
+def test_testnet_preflight_checks_the_env_file_being_deployed(tmp_path):
+    log = tmp_path / "calls.log"
+    env_file = _testnet_env(tmp_path)
+    _run("testnet", ENV_FILE=str(env_file), GIT=str(_clean_git(tmp_path)),
+         FORGE=str(_logging_stub(tmp_path, "forge", log)), UV=str(_logging_stub(tmp_path, "uv", log)))
+    assert f"--env-file {env_file}" in _calls(log)[0]
+
+
+def test_local_deploy_runs_no_testnet_preflight(tmp_path):
+    log = tmp_path / "calls.log"
+    _run("local", ENV_FILE=str(_env_file(tmp_path)), GIT=str(_clean_git(tmp_path)),
+         FORGE=str(_logging_stub(tmp_path, "forge", log)), UV=str(_logging_stub(tmp_path, "uv", log)))
+    assert not any("testnet_preflight" in c for c in _calls(log))
 
 
 # ---- no silent duplicate deployments on testnet ----
@@ -240,7 +269,7 @@ def test_redeploy_flag_allows_a_new_deployment(tmp_path):
     log = tmp_path / "calls.log"
     result = _testnet(tmp_path, log, REDEPLOY="1", **_dirs(tmp_path, DEPLOYED, with_broadcast=True))
     assert result.returncode == 0, result.stderr
-    assert [c.split()[0] for c in _calls(log)] == ["forge", "uv", "forge"]
+    assert [c.split()[0] for c in _calls(log)] == ["uv", "forge", "uv", "forge"]
 
 
 def test_local_deploy_never_verifies(tmp_path):

@@ -157,6 +157,56 @@ contract DeployTest is Test {
         assertEq(checked, 10);
     }
 
+    // ============================================ public dev accounts (testnet)
+
+    /// The mnemonic behind Anvil's and Hardhat's default accounts; its keys are public.
+    string internal constant DEV_MNEMONIC = "test test test test test test test test test test test junk";
+
+    function _devKey(uint32 index) internal pure returns (uint256) {
+        return vm.deriveKey(DEV_MNEMONIC, index);
+    }
+
+    function test_validate_rejectsPublicDevAccountForEveryRoleOnBaseSepolia() public {
+        vm.chainId(84532);
+        string[5] memory names = ["DEPLOYER", "ATTESTER", "MALICIOUS", "WATCHER", "RESOLVER"];
+        for (uint256 i; i < 5; ++i) {
+            Deploy.Config memory cfg = _validConfig();
+            uint256 key = _devKey(uint32(i));
+            address dev = vm.addr(key);
+            if (i == 0) {
+                cfg.deployerKey = key;
+                cfg.roles.deployer = dev;
+            } else if (i == 1) {
+                cfg.roles.attester = dev;
+            } else if (i == 2) {
+                cfg.roles.malicious = dev;
+            } else if (i == 3) {
+                cfg.roles.watcher = dev;
+            } else {
+                cfg.roles.resolver = dev;
+            }
+            vm.expectRevert(abi.encodeWithSelector(Deploy.PublicDevAccount.selector, names[i], dev));
+            script.validate(cfg);
+        }
+    }
+
+    function test_validate_rejectsLaterDevAccountsOnBaseSepolia() public {
+        vm.chainId(84532);
+        Deploy.Config memory cfg = _validConfig();
+        address hardhatLast = vm.addr(_devKey(19)); // Hardhat's 20th default account
+        cfg.roles.watcher = hardhatLast;
+        vm.expectRevert(abi.encodeWithSelector(Deploy.PublicDevAccount.selector, "WATCHER", hardhatLast));
+        script.validate(cfg);
+    }
+
+    function test_validate_allowsPublicDevAccountsOnLocalAnvil() public view {
+        // chain 31337 (the default in tests): local development keeps using the Anvil accounts.
+        Deploy.Config memory cfg = _validConfig();
+        cfg.deployerKey = _devKey(0);
+        cfg.roles = Deploy.Roles(vm.addr(_devKey(0)), vm.addr(_devKey(2)), vm.addr(_devKey(4)), vm.addr(_devKey(3)), vm.addr(_devKey(1)));
+        script.validate(cfg);
+    }
+
     function test_validate_rejectsZeroRoleAddress() public {
         string[4] memory names = ["ATTESTER", "MALICIOUS", "WATCHER", "RESOLVER"];
         for (uint256 i = 1; i < 5; ++i) {
