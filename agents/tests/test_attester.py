@@ -71,7 +71,10 @@ def test_cli_defaults_to_dry_run():
     assert CliRunner().invoke(cli, ["run", "--help"]).exit_code == 0
 
 
-def test_cli_reports_config_errors_without_a_traceback(tmp_path):
+def test_cli_reports_config_errors_without_a_traceback(tmp_path, monkeypatch):
+    # Exported variables win over the env file, and other suites may have loaded the repo .env
+    # into os.environ, so clear the one this test controls.
+    monkeypatch.delenv("DEPLOYMENTS_FILE", raising=False)
     env_file = tmp_path / ".env"
     env_file.write_text(f"DEPLOYMENTS_FILE={tmp_path / 'missing.json'}\n")
     result = CliRunner().invoke(cli, ["run", "--env-file", str(env_file)])
@@ -265,3 +268,14 @@ def test_stalled_chain_is_reported(ctx, node):
     _finalizable(node)
     with pytest.raises(ChainError, match="not producing blocks"):
         _run(ctx, send=True, auto_finalize=True, sleep=lambda s: None)  # time never advances
+
+
+def test_exported_variables_win_over_the_env_file(tmp_path, monkeypatch):
+    from stressproof_agents.attester.context import read_env
+
+    env_file = tmp_path / ".env"
+    env_file.write_text("DATA_DIR=./data\nONLY_IN_FILE=from-file\n")
+    monkeypatch.setenv("DATA_DIR", "/tmp/isolated-run")
+    env = read_env(env_file)
+    assert env["DATA_DIR"] == "/tmp/isolated-run"  # process environment wins
+    assert env["ONLY_IN_FILE"] == "from-file"  # the file fills gaps

@@ -26,11 +26,16 @@ class AttesterContext:
 
 
 def read_env(env_file: Optional[Path]) -> Mapping[str, str]:
-    """Process environment, overlaid with an env file when one is given or ./.env exists."""
-    merged = dict(os.environ)
+    """The env file (when given, or ./.env if it exists) filled in under the process environment.
+
+    Exported variables win over the file, as with the pipeline's load_env(override=False), so a
+    caller can point one run elsewhere (e.g. DATA_DIR for an isolated end-to-end run).
+    """
+    merged: dict = {}
     path = env_file if env_file is not None else Path(".env")
     if env_file is not None or path.is_file():
         merged.update(load_env_file(path))
+    merged.update(os.environ)
     return merged
 
 
