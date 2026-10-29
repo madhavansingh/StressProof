@@ -123,25 +123,6 @@ export function BrutalistPageLoader({ onComplete }: BrutalistPageLoaderProps) {
               </div>
             </div>
 
-            {/* Status Pills */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] uppercase font-mono">
-              <div className="border border-border p-2 bg-card">
-                <span className="text-muted-foreground block">NETWORK</span>
-                <span className="text-emerald-400 font-bold">BASE_SEPOLIA</span>
-              </div>
-              <div className="border border-border p-2 bg-card">
-                <span className="text-muted-foreground block">ENGINE</span>
-                <span className="text-foreground font-bold">STATIC_V1</span>
-              </div>
-              <div className="border border-border p-2 bg-card">
-                <span className="text-muted-foreground block">SECURITY</span>
-                <span className="text-foreground font-bold">BONDED_STAKE</span>
-              </div>
-              <div className="border border-border p-2 bg-card">
-                <span className="text-muted-foreground block">VERDICT</span>
-                <span className="text-[#ea580c] font-bold">DETERMINISTIC</span>
-              </div>
-            </div>
           </div>
         </motion.div>
       )}

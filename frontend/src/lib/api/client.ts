@@ -6,10 +6,14 @@
  * (/api/stress/run) to prevent leaking the backend write token to browser bundles.
  */
 
+import { FeedResponse } from "@/types";
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
 
 export async function fetchDatasets() {
-  const res = await fetch(`${BACKEND_URL}/datasets`);
+  const res = await fetch(`${BACKEND_URL}/datasets`, {
+    cache: "no-store",
+  });
   if (!res.ok) throw new Error("Failed to load datasets");
   return res.json();
 }
@@ -36,8 +40,10 @@ export async function runStressTest(datasetId: string, shockBps: number, rationa
   return res.json();
 }
 
-export async function fetchFeed(since = 0) {
-  const res = await fetch(`${BACKEND_URL}/feed?since=${since}`);
-  if (!res.ok) throw new Error("Failed to load feed");
+export async function fetchFeed(since = 0, limit = 200): Promise<FeedResponse> {
+  const res = await fetch(`${BACKEND_URL}/feed?since=${since}&limit=${limit}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Failed to load feed: HTTP ${res.status}`);
   return res.json();
 }

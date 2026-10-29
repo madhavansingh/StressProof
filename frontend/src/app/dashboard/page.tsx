@@ -1,42 +1,79 @@
 "use client";
 
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Layers,
   ArrowUpRight,
-  TrendingDown,
   Shield,
   Radio,
-  FileCheck2,
   Lock,
 } from "lucide-react";
 import { RiskAccountsWidget } from "@/components/portal/RiskAccountsWidget";
 import { RecentAttestationsWidget } from "@/components/portal/RecentAttestationsWidget";
 import { VaultDefenseWidget } from "@/components/portal/VaultDefenseWidget";
+import { useAccount, usePublicClient } from "wagmi";
+import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
+import { formatUsd8 } from "@/lib/format";
+import { parseClaimStruct } from "@/lib/claims";
 
 export default function DashboardMarketsPage() {
-  const market = {
-    id: "aave-v3-eth-weth-stable",
-    name: "Aave v3 Ethereum Core Fork",
-    pair: "WETH / Stablecoins",
-    dataClass: "REAL",
-    forkBlock: 19500000,
-    wethPrice: 300000000000, // $3,000.00
-    totalTvl: "$31.4M",
-    monitoredBorrowers: 5,
-    vaultState: {
-      borrowPaused: false,
-      defaultMaxLtvBps: 8000,
-      currentMaxLtvBps: 5000,
-      pauseThresholdUsd8: "400000000002",
-      ltvThresholdUsd8: "100000000000",
-    },
-    latestClaim: {
-      id: "1",
-      status: "Finalized",
-      claimedResidualBadDebt: "200000000001", // $2,000.00
-    },
-  };
+  const { chainId } = useAccount();
+  const effectiveChainId = chainId || ACTIVE_CHAIN_ID;
+  const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
+  const publicClient = usePublicClient({ chainId: effectiveChainId });
+
+  const [maxLtvBps, setMaxLtvBps] = useState<number>(8000);
+  const [borrowPaused, setBorrowPaused] = useState<boolean>(false);
+  const [claimCount, setClaimCount] = useState<number>(0);
+  const [latestClaimBadDebt, setLatestClaimBadDebt] = useState<bigint>(0n);
+
+  useEffect(() => {
+    async function loadDashboardChainState() {
+      if (!publicClient) return;
+      try {
+        const [maxLtv, paused, countRaw] = await Promise.all([
+          publicClient.readContract({
+            address: config.vault.address,
+            abi: config.vault.abi,
+            functionName: "maxLtvBps",
+          }),
+          publicClient.readContract({
+            address: config.vault.address,
+            abi: config.vault.abi,
+            functionName: "borrowPaused",
+          }),
+          publicClient.readContract({
+            address: config.registry.address,
+            abi: config.registry.abi,
+            functionName: "claimCount",
+          }),
+        ]);
+
+        setMaxLtvBps(Number(maxLtv as bigint | number));
+        setBorrowPaused(Boolean(paused));
+        const cnt = Number(countRaw as bigint);
+        setClaimCount(cnt);
+
+        if (cnt > 0) {
+          const rawClaim = await publicClient.readContract({
+            address: config.registry.address,
+            abi: config.registry.abi,
+            functionName: "claim",
+            args: [BigInt(cnt)],
+          });
+          const parsed = parseClaimStruct(BigInt(cnt), rawClaim);
+          setLatestClaimBadDebt(parsed.claimedResidualBadDebt);
+        }
+      } catch (err) {
+        // Handled silently
+      }
+    }
+
+    loadDashboardChainState();
+    const interval = setInterval(loadDashboardChainState, 4000);
+    return () => clearInterval(interval);
+  }, [publicClient, config]);
 
   return (
     <div className="space-y-6 font-mono">
@@ -44,14 +81,19 @@ export default function DashboardMarketsPage() {
       <div className="border border-border bg-card p-3 text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="h-2 w-2 bg-[#ea580c] animate-blink shrink-0" />
-          <span className="text-foreground font-bold shrink-0">[FORK_VERIFIED]</span>
+          <span className="text-foreground font-bold shrink-0">[GATE-24_VERIFIED]</span>
           <span className="truncate sm:overflow-visible sm:whitespace-normal">
-            Ethereum Mainnet block #{market.forkBlock} replayed deterministically via static replayer.
+            Aave v3 WETH/Stable credit market deterministically monitored via bonded optimistic claims.
           </span>
         </div>
-        <span className="hidden sm:inline text-[10px] text-muted-foreground uppercase shrink-0">
-          PROTOCOL_REV: 0x82a9
-        </span>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="px-1.5 py-0.5 border border-border bg-secondary text-[10px] font-bold uppercase">
+            MOCK MARKET
+          </span>
+          <span className="text-[10px] text-muted-foreground uppercase">
+            SYNTHETIC_DATASET
+          </span>
+        </div>
       </div>
 
       {/* Header & Page Title */}
@@ -63,7 +105,7 @@ export default function DashboardMarketsPage() {
             </h1>
             <span className="px-2 py-0.5 border border-emerald-500 bg-emerald-950/40 text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0">
               <span className="h-1.5 w-1.5 bg-emerald-400 animate-pulse" />
-              LIVE_FORK
+              LIVE_ON_CHAIN
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl leading-relaxed uppercase">
@@ -84,93 +126,84 @@ export default function DashboardMarketsPage() {
         </div>
       </div>
 
-      {/* Top 4 KPI Cards (Brutalist Style) */}
+      {/* Top 4 KPI Cards (Live from Chain) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1: Monitored TVL */}
+        {/* Card 1: Monitored Market */}
         <div className="bg-card border-2 border-border p-4 sm:p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-widest">
-              // 01 MONITORED_TVL
+              // 01 MONITORED_MARKET
             </span>
             <Layers className="h-4 w-4 text-[#ea580c]" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{market.totalTvl}</p>
+            <p className="text-base font-bold text-foreground">AAVE_V3_ETH_WETH</p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              FORK_BLOCK #{market.forkBlock}
+              FORK_BLOCK #19,000,000
             </span>
           </div>
         </div>
 
-        {/* Card 2: WETH Base Price */}
+        {/* Card 2: Registry Claims */}
         <div className="bg-card border-2 border-border p-4 sm:p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-widest">
-              // 02 WETH_ORACLE
+              // 02 TOTAL_CLAIMS
             </span>
-            <Radio className="h-4 w-4 text-[#ea580c]" />
+            <Radio className="h-4 w-4 text-emerald-400" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">$3,000.00</p>
-            <span className="text-[10px] text-emerald-400 uppercase font-bold flex items-center gap-1">
-              <span className="h-1.5 w-1.5 bg-emerald-400 animate-pulse" />
-              FEED_SYNCED
+            <p className="text-2xl font-bold text-foreground">{claimCount} RECORDED</p>
+            <span className="text-[10px] text-muted-foreground uppercase">
+              LATEST: {formatUsd8(latestClaimBadDebt)} BAD DEBT
             </span>
           </div>
         </div>
 
-        {/* Card 3: Claimed Bad Debt */}
+        {/* Card 3: Vault Defense Max LTV */}
         <div className="bg-card border-2 border-border p-4 sm:p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-widest">
-              // 03 RESIDUAL_BAD_DEBT
+              // 03 ACTIVE_MAX_LTV
             </span>
-            <FileCheck2 className="h-4 w-4 text-[#ea580c]" />
+            <Shield className="h-4 w-4 text-[#ea580c]" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">$2,000.00</p>
-            <span className="text-[10px] text-emerald-400 uppercase font-bold">
-              [CLAIM_#1_FINALIZED]
+            <p className="text-2xl font-bold text-[#ea580c]">{(maxLtvBps / 100).toFixed(2)}%</p>
+            <span className="text-[10px] text-muted-foreground uppercase">
+              {maxLtvBps <= 5000 ? "DEFENSE_TIGHTENED" : "BASELINE (80.00%)"}
             </span>
           </div>
         </div>
 
-        {/* Card 4: Circuit Breaker Max LTV */}
+        {/* Card 4: Circuit Breaker Status */}
         <div className="bg-card border-2 border-border p-4 sm:p-5 flex flex-col justify-between space-y-3 hover:border-foreground transition-all">
           <div className="flex items-center justify-between text-muted-foreground">
             <span className="text-[10px] font-bold uppercase tracking-widest">
-              // 04 VAULT_DEFENSE_LTV
+              // 04 CIRCUIT_BREAKER
             </span>
-            <Lock className="h-4 w-4 text-[#ea580c]" />
+            <Lock className="h-4 w-4 text-foreground" />
           </div>
           <div>
-            <div className="flex items-baseline gap-2">
-              <p className="text-2xl font-bold text-[#ea580c]">50.00%</p>
-              <span className="text-xs text-muted-foreground line-through">80.00%</span>
-            </div>
-            <span className="text-[10px] text-[#ea580c] uppercase font-bold">
-              [CIRCUIT_BREAKER_TRIPPED]
+            <p className="text-2xl font-bold text-foreground">
+              {borrowPaused ? "HALTED" : "OPERATIONAL"}
+            </p>
+            <span className="text-[10px] text-muted-foreground uppercase">
+              {borrowPaused ? "BORROW_HALTED" : "ALL_SYSTEMS_NORMAL"}
             </span>
           </div>
         </div>
       </div>
 
-      {/* Main 2-Column Section */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Left Column: Protocol Risk Accounts (2 Cols) */}
-        <div className="xl:col-span-2 bg-card border-2 border-border p-4 sm:p-5">
-          <RiskAccountsWidget />
-        </div>
-
-        {/* Right Column: Recent Attestations & Registry */}
-        <div className="bg-card border-2 border-border p-4 sm:p-5">
-          <RecentAttestationsWidget />
-        </div>
+      {/* 2-Column Portal Widgets */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RiskAccountsWidget className="bg-card border-2 border-border p-5" />
+        <VaultDefenseWidget className="bg-card border-2 border-border p-5" />
       </div>
 
-      {/* Bottom Section: Vault Defense Automation */}
-      <div className="bg-card border-2 border-border p-4 sm:p-5">
-        <VaultDefenseWidget />
+      {/* Full-Width Recent Claims Widget */}
+      <div className="border-2 border-border bg-card p-5">
+        <RecentAttestationsWidget />
       </div>
     </div>
   );

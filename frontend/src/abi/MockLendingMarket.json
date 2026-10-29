@@ -3,22 +3,43 @@
     "type": "function",
     "name": "vault",
     "inputs": [],
-    "outputs": [{ "name": "", "type": "address" }],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "debtUsd8",
-    "inputs": [{ "name": "user", "type": "address" }],
-    "outputs": [{ "name": "", "type": "uint256" }],
+    "inputs": [
+      {
+        "name": "user",
+        "type": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "view"
   },
   {
     "type": "function",
     "name": "borrow",
     "inputs": [
-      { "name": "collateralUsd8", "type": "uint256" },
-      { "name": "amountUsd8", "type": "uint256" }
+      {
+        "name": "collateralUsd8",
+        "type": "uint256"
+      },
+      {
+        "name": "amountUsd8",
+        "type": "uint256"
+      }
     ],
     "outputs": [],
     "stateMutability": "nonpayable"
@@ -27,11 +48,52 @@
     "type": "event",
     "name": "Borrowed",
     "inputs": [
-      { "name": "user", "type": "address", "indexed": true },
-      { "name": "collateralUsd8", "type": "uint256", "indexed": false },
-      { "name": "amountUsd8", "type": "uint256", "indexed": false },
-      { "name": "ltvBps", "type": "uint256", "indexed": false }
+      {
+        "name": "user",
+        "type": "address",
+        "indexed": true
+      },
+      {
+        "name": "collateralUsd8",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "amountUsd8",
+        "type": "uint256",
+        "indexed": false
+      },
+      {
+        "name": "ltvBps",
+        "type": "uint256",
+        "indexed": false
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "BorrowPaused",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroCollateral",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "LtvTooHigh",
+    "inputs": [
+      {
+        "name": "requestedBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "maxBps",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
     ]
   }
 ]
-

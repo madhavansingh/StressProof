@@ -1,163 +1,184 @@
 "use client";
 
-import { CheckCircle2, Clock, ShieldAlert, ArrowRight } from "lucide-react";
+import { useEffect, useState, useMemo } from "react";
+import { CheckCircle2, Clock, ShieldAlert, ArrowRight, Loader2 } from "lucide-react";
 import Link from "next/link";
-
-interface AttestationEvent {
-  id: string;
-  claimId: string;
-  title: string;
-  amountAtRisk: string;
-  type: "settled" | "pending" | "challenge";
-  timestamp: string;
-  status: "finalized" | "review" | "active";
-  rootHash: string;
-}
-
-const RECENT_ATTESTATIONS: AttestationEvent[] = [
-  {
-    id: "att-1",
-    claimId: "1",
-    title: "CLAIM_#1 // AAVE_V3 -30%",
-    amountAtRisk: "$2,000.00",
-    type: "settled",
-    timestamp: "12M AGO",
-    status: "finalized",
-    rootHash: "0x7f42...25f0",
-  },
-  {
-    id: "att-2",
-    claimId: "2",
-    title: "CLAIM_#2 // COMP -50%",
-    amountAtRisk: "$5,400.00",
-    type: "pending",
-    timestamp: "45M AGO",
-    status: "active",
-    rootHash: "0x9b31...c6e2",
-  },
-  {
-    id: "att-3",
-    claimId: "3",
-    title: "CLAIM_#3 // SPARK SLIPPAGE",
-    amountAtRisk: "$1,120.00",
-    type: "challenge",
-    timestamp: "2H AGO",
-    status: "review",
-    rootHash: "0xd421...aa10",
-  },
-  {
-    id: "att-4",
-    claimId: "4",
-    title: "HEARTBEAT // FORK #19.5M",
-    amountAtRisk: "$0.00",
-    type: "settled",
-    timestamp: "4H AGO",
-    status: "finalized",
-    rootHash: "0x12bb...ef55",
-  },
-];
+import { useAccount, usePublicClient } from "wagmi";
+import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
+import { parseClaimStruct, OnChainClaim } from "@/lib/claims";
+import { formatUsd8, formatAddress } from "@/lib/format";
 
 export function RecentAttestationsWidget({ className = "" }: { className?: string }) {
+  const { chainId } = useAccount();
+  const effectiveChainId = chainId || ACTIVE_CHAIN_ID;
+  const config = useMemo(() => getContractConfig(effectiveChainId), [effectiveChainId]);
+  const publicClient = usePublicClient({ chainId: effectiveChainId });
+
+  const [claims, setClaims] = useState<OnChainClaim[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+
+  useEffect(() => {
+    let mounted = true;
+    async function fetchLatestClaims() {
+      if (!publicClient) return;
+      try {
+        const countRaw = await publicClient.readContract({
+          address: config.registry.address,
+          abi: config.registry.abi,
+          functionName: "claimCount",
+        });
+        const count = Number(countRaw as bigint);
+        if (count === 0) {
+          if (mounted) {
+            setClaims([]);
+            setLoading(false);
+          }
+          return;
+        }
+
+        // Read up to last 4 claims in reverse
+        const start = Math.max(1, count - 3);
+        const promises = [];
+        for (let i = count; i >= start; i--) {
+          promises.push(
+            publicClient
+              .readContract({
+                address: config.registry.address,
+                abi: config.registry.abi,
+                functionName: "claim",
+                args: [BigInt(i)],
+              })
+              .then((raw) => parseClaimStruct(BigInt(i), raw))
+          );
+        }
+
+        const items = await Promise.all(promises);
+        if (mounted) {
+          setClaims(items);
+          setLoading(false);
+        }
+      } catch (err) {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    fetchLatestClaims();
+    const interval = setInterval(fetchLatestClaims, 4000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [publicClient, config]);
+
   return (
     <div className={`w-full flex flex-col justify-between space-y-4 font-mono ${className}`}>
-      {/* Unified Header */}
-      <div className="flex items-center justify-between pb-3 border-b-2 border-border gap-2">
-        <div className="min-w-0">
-          <span className="text-[10px] uppercase tracking-widest text-muted-foreground block">
-            {"// REGISTRY_LOGS"}
-          </span>
-          <h2 className="text-sm sm:text-base font-bold uppercase tracking-wider text-foreground truncate mt-0.5">
-            ATTESTATIONS_STREAM
-          </h2>
+      {/* Top Header */}
+      <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b-2 border-border">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-8 w-8 shrink-0 border border-border bg-secondary flex items-center justify-center text-[#ea580c]">
+            <CheckCircle2 className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[10px] uppercase tracking-widest text-muted-foreground block">
+              {"// REGISTRY_INTEGRITY"}
+            </span>
+            <p className="text-base sm:text-lg md:text-xl font-bold tracking-tight text-foreground mt-0.5 truncate">
+              RECENT_CLAIMS_FEED
+            </p>
+          </div>
         </div>
-        <div className="shrink-0 flex items-center gap-1.5 px-2 py-0.5 border border-border bg-secondary text-[10px] font-bold text-foreground">
-          <span className="h-1.5 w-1.5 bg-[#ea580c] animate-pulse" />
-          <span>120S_WINDOW</span>
-        </div>
-      </div>
 
-      {/* Events List */}
-      <div className="space-y-2.5">
-        {RECENT_ATTESTATIONS.map((event) => {
-          const isSettled = event.type === "settled";
-          const isPending = event.type === "pending";
-
-          return (
-            <div
-              key={event.id}
-              className="p-3 border border-border bg-background hover:border-foreground transition-all space-y-2"
-            >
-              {/* Row 1: Icon + Title + Amount */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0 flex-1">
-                  <div
-                    className={`h-5 w-5 shrink-0 border flex items-center justify-center font-bold text-[10px] ${
-                      isSettled
-                        ? "border-emerald-500 bg-emerald-950/60 text-emerald-400"
-                        : isPending
-                        ? "border-amber-500 bg-amber-950/60 text-amber-400"
-                        : "border-orange-500 bg-orange-950/60 text-[#ea580c]"
-                    }`}
-                  >
-                    {isSettled ? (
-                      <CheckCircle2 className="h-3 w-3" />
-                    ) : isPending ? (
-                      <Clock className="h-3 w-3" />
-                    ) : (
-                      <ShieldAlert className="h-3 w-3" />
-                    )}
-                  </div>
-                  <p className="text-xs font-bold text-foreground uppercase tracking-wider truncate">
-                    {event.title}
-                  </p>
-                </div>
-
-                <div className="text-right shrink-0">
-                  <span className="text-xs font-bold text-foreground">
-                    {event.amountAtRisk}
-                  </span>
-                </div>
-              </div>
-
-              {/* Row 2: Status Tag + Evidence Hash + Timestamp */}
-              <div className="flex items-center justify-between text-[10px] pt-1.5 border-t border-border/40 gap-2">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span
-                    className={`shrink-0 text-[9px] px-1.5 py-0.2 border uppercase font-bold ${
-                      isSettled
-                        ? "border-emerald-500 bg-emerald-950/40 text-emerald-400"
-                        : isPending
-                        ? "border-amber-500 bg-amber-950/40 text-amber-400"
-                        : "border-orange-500 bg-orange-950/40 text-[#ea580c]"
-                    }`}
-                  >
-                    {event.status}
-                  </span>
-                  <span className="text-muted-foreground truncate font-mono">
-                    {event.rootHash}
-                  </span>
-                </div>
-
-                <span className="text-muted-foreground uppercase shrink-0 text-[10px]">
-                  {event.timestamp}
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Footer Link */}
-      <div className="pt-2">
         <Link
           href="/claims"
-          className="flex items-center justify-between p-2.5 border border-dashed border-border bg-muted/10 text-xs font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground hover:border-foreground transition-all"
+          className="text-xs uppercase font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 group shrink-0"
         >
-          <span className="truncate">VIEW_REGISTRY</span>
-          <span className="text-[#ea580c] font-bold shrink-0 ml-2 flex items-center gap-1">
-            [OPEN_PORTAL <ArrowRight size={12} className="inline" />]
-          </span>
+          <span>VIEW_ALL_CLAIMS</span>
+          <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
         </Link>
+      </div>
+
+      {/* Attestation Events Ledger */}
+      <div className="border-2 border-border bg-card divide-y-2 divide-border">
+        {loading ? (
+          <div className="p-8 text-center text-xs text-muted-foreground uppercase flex items-center justify-center gap-2">
+            <Loader2 className="h-4 w-4 animate-spin text-[#ea580c]" />
+            <span>READING_REGISTRY_LEDGER...</span>
+          </div>
+        ) : claims.length === 0 ? (
+          <div className="p-8 text-center text-xs text-muted-foreground uppercase space-y-1">
+            <p className="text-foreground font-bold">NO ON-CHAIN CLAIMS YET</p>
+            <p className="text-[10px]">Execute a simulation on /stress to publish bonded claims.</p>
+          </div>
+        ) : (
+          claims.map((att) => {
+            const isFinalized = att.stateName === "Finalized";
+            const isChallenged = att.stateName === "Challenged";
+            const isPending = att.stateName === "Pending";
+
+            return (
+              <div
+                key={att.id.toString()}
+                className="p-3 sm:p-4 hover:bg-secondary/40 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+              >
+                <div className="flex items-start sm:items-center gap-3 min-w-0">
+                  <div className="shrink-0 mt-0.5 sm:mt-0">
+                    {isFinalized ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                    ) : isChallenged ? (
+                      <ShieldAlert className="h-4 w-4 text-[#ea580c]" />
+                    ) : (
+                      <Clock className="h-4 w-4 text-amber-400" />
+                    )}
+                  </div>
+
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs sm:text-sm font-bold text-foreground truncate">
+                        CLAIM_#{att.id.toString()} // AAVE_V3
+                      </span>
+                      <span
+                        className={`px-1.5 py-0.2 border text-[9px] font-bold uppercase ${
+                          isFinalized
+                            ? "border-emerald-500 bg-emerald-950/40 text-emerald-400"
+                            : isChallenged
+                            ? "border-[#ea580c] bg-orange-950/40 text-[#ea580c]"
+                            : "border-amber-500 bg-amber-950/40 text-amber-400"
+                        }`}
+                      >
+                        [{att.stateName}]
+                      </span>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2 mt-1 text-[10px] text-muted-foreground">
+                      <span>ATTESTER: {formatAddress(att.attester)}</span>
+                      <span>&bull;</span>
+                      <span className="font-mono">
+                        HASH: {att.evidenceHash ? `${att.evidenceHash.slice(0, 10)}...` : "—"}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between sm:justify-end gap-4 shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 border-border">
+                  <div className="text-left sm:text-right">
+                    <span className="text-xs sm:text-sm font-bold text-foreground block">
+                      {formatUsd8(att.claimedResidualBadDebt)}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground uppercase">BAD_DEBT</span>
+                  </div>
+
+                  <Link
+                    href={`/claims/${att.id.toString()}`}
+                    className="p-1.5 border border-border bg-background hover:border-foreground text-foreground transition-all shrink-0"
+                    title="View claim dossier"
+                  >
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
     </div>
   );
