@@ -22,6 +22,11 @@ contract Deploy is Script {
     uint256 internal constant BASE_SEPOLIA_CHAIN_ID = 84532;
     uint256 internal constant MAX_BPS = 10_000;
     uint256 internal constant GIT_SHA_LENGTH = 40;
+    /// The mnemonic behind Anvil's and Hardhat's default accounts. Its keys are public, so funds
+    /// sent to these accounts on a public network can be taken by anyone.
+    string internal constant PUBLIC_DEV_MNEMONIC = "test test test test test test test test test test test junk";
+    /// Anvil creates 10 default accounts and Hardhat 20, all from the mnemonic above.
+    uint32 internal constant PUBLIC_DEV_ACCOUNTS = 20;
 
     struct Roles {
         address deployer;
@@ -64,6 +69,7 @@ contract Deploy is Script {
     error InvalidLtvBps(uint256 reducedLtvBps, uint256 defaultMaxLtvBps);
     error EmptyMarketId();
     error InvalidGitCommit(string gitCommit);
+    error PublicDevAccount(string role, address account);
 
     // ================================================================ entry
 
@@ -115,6 +121,7 @@ contract Deploy is Script {
             revert UnsupportedChain(block.chainid);
         }
         _validateRoles(cfg);
+        if (block.chainid == BASE_SEPOLIA_CHAIN_ID) _rejectPublicDevAccounts(cfg.roles);
         _validateRegistryParams(cfg);
         _validateVaultParams(cfg);
         if (!_isGitSha(cfg.gitCommit)) revert InvalidGitCommit(cfg.gitCommit);
@@ -130,6 +137,19 @@ contract Deploy is Script {
             if (addrs[i] == address(0)) revert ZeroRoleAddress(names[i]);
             for (uint256 j; j < i; ++j) {
                 if (addrs[i] == addrs[j]) revert DuplicateRole(names[j], names[i]);
+            }
+        }
+    }
+
+    /// On a public network no role may use a default development account: their keys are public.
+    /// Only addresses are compared and reported; keys are never logged.
+    function _rejectPublicDevAccounts(Roles memory r) internal pure {
+        address[5] memory addrs = [r.deployer, r.attester, r.malicious, r.watcher, r.resolver];
+        string[5] memory names = [string("DEPLOYER"), "ATTESTER", "MALICIOUS", "WATCHER", "RESOLVER"];
+        for (uint32 i; i < PUBLIC_DEV_ACCOUNTS; ++i) {
+            address dev = vm.addr(vm.deriveKey(PUBLIC_DEV_MNEMONIC, i));
+            for (uint256 j; j < addrs.length; ++j) {
+                if (addrs[j] == dev) revert PublicDevAccount(names[j], dev);
             }
         }
     }

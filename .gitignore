@@ -6,6 +6,10 @@ Thumbs.db
 .env
 .env.local
 .env.*.local
+# Any other env file (e.g. .env.testnet holding testnet role keys); only the examples are tracked.
+.env.*
+!.env.example
+!.env.*.example
 *.pem
 *.key
 

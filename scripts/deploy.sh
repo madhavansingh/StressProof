@@ -4,7 +4,10 @@
 #
 # Usage: scripts/deploy.sh local|testnet
 #   local    LOCAL_RPC_URL (default http://127.0.0.1:8546), chain 31337; warns about uncommitted changes
-#   testnet  TESTNET_RPC_URL, chain 84532; refuses uncommitted changes; verifies sources on the explorer
+#   testnet  TESTNET_RPC_URL, chain 84532; reads .env.testnet by default (never the local .env);
+#            refuses uncommitted changes; runs scripts/testnet_preflight.py (role keys must be
+#            dedicated, distinct and not public development accounts) before broadcasting;
+#            verifies sources on the explorer
 #
 # The deployments file is replaced only if `forge script --broadcast` succeeds AND
 # scripts/write_deployment.py confirms every receipt and on-chain value. A dry run, a failed
@@ -20,7 +23,7 @@
 # never recorded (a deploy whose recording failed). RECORD_ONLY=1 records that existing broadcast
 # without sending anything (run it from the same commit); REDEPLOY=1 deploys a new set on purpose.
 #
-# Overrides: FORGE, GIT, UV (tool paths), ENV_FILE (default .env), DEPLOYMENTS_DIR and
+# Overrides: FORGE, GIT, UV (tool paths), ENV_FILE (default .env, or .env.testnet for testnet), DEPLOYMENTS_DIR and
 # BROADCAST_DIR (tests), RECORD_ONLY, REDEPLOY.
 set -euo pipefail
 
@@ -28,7 +31,6 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 FORGE="${FORGE:-forge}"
 GIT="${GIT:-git}"
 UV="${UV:-uv}"
-ENV_FILE="${ENV_FILE:-$REPO_ROOT/.env}"
 
 die() {
     echo "ERROR: $*" >&2
@@ -45,6 +47,12 @@ case "$target" in
         exit 2
         ;;
 esac
+
+# Testnet keys live in their own git-ignored file, so a testnet deploy never picks up the local
+# Anvil keys from .env by accident.
+if [ -z "${ENV_FILE:-}" ]; then
+    if [ "$target" = "testnet" ]; then ENV_FILE="$REPO_ROOT/.env.testnet"; else ENV_FILE="$REPO_ROOT/.env"; fi
+fi
 
 cd "$REPO_ROOT"
 [ -f "$ENV_FILE" ] || die "$ENV_FILE not found (copy .env.example and fill it in)"
@@ -83,6 +91,12 @@ elif [ "$target" = "testnet" ] && [ "${REDEPLOY:-0}" != 1 ]; then
     if [ -f "$broadcast_file" ]; then
         die "an unrecorded broadcast exists at ${broadcast_file}; record it with RECORD_ONLY=1 instead of deploying again (or set REDEPLOY=1)"
     fi
+fi
+
+if [ "$target" = "testnet" ] && [ "$record_only" != 1 ]; then
+    echo "==> Testnet preflight (local checks of keys and parameters; no transactions)"
+    GIT="$GIT" "$UV" run --no-sync python scripts/testnet_preflight.py --env-file "$ENV_FILE" --keys-only \
+        || die "testnet preflight failed; fix every FAIL above before deploying"
 fi
 
 if [ "$record_only" = 1 ]; then
