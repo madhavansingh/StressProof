@@ -31,7 +31,7 @@ StressProof/
 │       ├── case-file.md           # Specification of canonical case files
 │       └── replay-report.md       # Specification of watcher replay reports
 │
-├── frontend/                      # Developer 1: Web Interface
+├── frontend/                      # Web interface (originally Developer 1)
 │   ├── package.json               # Next.js 15, Wagmi, Viem, RainbowKit, Tailwind
 │   ├── tsconfig.json              # Strict TypeScript settings with path aliases
 │   ├── next.config.ts             # Next.js application configuration
@@ -43,7 +43,7 @@ StressProof/
 │   │   └── types/                 # TypeScript interfaces for API & contracts
 │   └── tests/                     # Unit and component tests
 │
-├── core/                          # Developer 2: Pure Calculation Engine
+├── core/                          # Pure calculation engine (originally Developer 2)
 │   ├── pyproject.toml             # Package definition: stressproof-core
 │   ├── README.md                  # Core library documentation
 │   ├── src/stressproof_core/      # Source package
@@ -56,7 +56,7 @@ StressProof/
 │   │   └── replay.py              # Pure integer static-liquidation-v1 engine
 │   └── tests/                     # Property tests and Appendix A test vectors
 │
-├── pipeline/                      # Developer 2: Snapshot Ingestion
+├── pipeline/                      # Snapshot ingestion (originally Developer 2)
 │   ├── pyproject.toml             # Package definition: stressproof-pipeline
 │   ├── README.md                  # Aave v3 extraction guide
 │   ├── src/stressproof_pipeline/  # Source package
@@ -65,7 +65,7 @@ StressProof/
 │   │   └── abis/                  # Minimal Aave v3 contract ABIs
 │   └── tests/                     # Pipeline tests
 │
-├── backend/                       # Developer 2: FastAPI Service
+├── backend/                       # FastAPI service (originally Developer 2)
 │   ├── pyproject.toml             # Package definition: stressproof-backend
 │   ├── README.md                  # Backend API documentation
 │   ├── src/stressproof_backend/   # Source package
@@ -75,7 +75,7 @@ StressProof/
 │   │   └── storage/               # Content-addressed file store (raw bytes)
 │   └── tests/                     # API endpoint tests
 │
-├── agents/                        # Developer 3 (Contracts/Agents) & Developer 2 (Consumer)
+├── agents/                        # Agents (originally Developer 3; Developer 2 as consumer)
 │   ├── pyproject.toml             # Package definition: stressproof-agents
 │   ├── README.md                  # Agent daemons documentation
 │   ├── src/stressproof_agents/    # Source package
@@ -86,7 +86,7 @@ StressProof/
 │   │   └── malicious/             # Scripted malicious attester for demo
 │   └── tests/                     # Agent execution tests
 │
-├── contracts/                     # Developer 3: Foundry Smart Contracts
+├── contracts/                     # Foundry smart contracts (originally Developer 3)
 │   ├── foundry.toml               # Foundry configuration pinned to solc 0.8.24
 │   ├── README.md                  # Contracts documentation
 │   ├── src/                       # Solidity contracts (StressRegistry, DemoVault, MockLendingMarket)

@@ -1,12 +1,27 @@
-# StressProof — Contributing & Multi-Developer Guidelines
+# StressProof — Contributing Guidelines
 
-Welcome to the StressProof engineering team! This monorepo is engineered to allow three developers to build in parallel across frontend, backend/risk-engine, and blockchain/agents without blocking each other.
+## Governance (current, since 2026-10-30)
+
+| | |
+|---|---|
+| Ownership | Single project owner |
+| Decision authority | Sole project owner |
+| Development model | Integrated, repository-wide development |
+| Accountability | Overall responsibility rests with the project owner |
+
+StressProof is a single-owner project. The project owner decides and approves project direction and may
+work in every part of the repository. Earlier per-developer directory assignments are kept below as
+contributor history; they are no longer restrictions on who may change a directory. The architectural
+rules in §2 apply to all work regardless of who does it.
 
 ---
 
-## 1. Team Ownership & Responsibilities
+## 1. Subsystems and original contributor focus (historical)
 
-| Role | Domain / Packages | Primary Responsibilities |
+These areas were originally split across three contributors. They remain a useful map of the
+subsystems; they are not ownership boundaries.
+
+| Original role | Domain / Packages | Primary Responsibilities |
 |---|---|---|
 | **Developer 1 (Frontend)** | `frontend/` | Next.js App Router, Tailwind/shadcn UI, Wagmi/Viem wallet integration, in-browser hash verification, reactive claims list, interactive borrowing demo. |
 | **Developer 2 (Backend & Risk Engine)** | `core/`, `pipeline/`, `backend/` | Pure Python `static-liquidation-v1` deterministic replayer, canonical JSON serializer, Keccak hashing, validation rules V-01..V-14, Aave v3 extraction, FastAPI content-addressed storage, agent feed. |

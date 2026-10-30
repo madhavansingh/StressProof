@@ -2,6 +2,13 @@
 
 This document describes the high-level architecture, subsystem boundaries, trust assumptions, and data flow of StressProof.
 
+> **Implementation status (2026-10-30).** Everything below runs locally on Anvil (GATE-24 local checks
+> 101/101). Base Sepolia deployment is pending. The dataset is SYNTHETIC. The LLM / TigerGraph scenario stage
+> in sections 2–3 is the **design**: today the attester uses a fixed scenario (`FIXED_SCENARIO_SHOCK_BPS`,
+> default −3000 bps), and WP-7 (LLM proposer) is not implemented. The exposure graph (`/graph`, WP-6) is built
+> from the hash-verified case file and `GET /replay-outputs/{evidenceHash}`, not TigerGraph, and is
+> informational only.
+
 ---
 
 ## 1. Subsystem Architecture

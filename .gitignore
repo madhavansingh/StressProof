@@ -13,6 +13,9 @@ Thumbs.db
 *.pem
 *.key
 
+# Socket scan output (scripts/socket_scan.sh)
+socket-report/
+
 # Python
 __pycache__/
 *.py[cod]

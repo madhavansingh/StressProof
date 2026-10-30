@@ -49,10 +49,14 @@ describe("checkWriteReadiness: connection and chain before every write", () => {
     if (!r.ok) expect(r.message).toContain("chain 84532");
   });
 
-  it("explains the Cake Wallet limitation when the wallet sits on a Cake-supported chain", () => {
+  it("names both chains without blaming a particular wallet (seen as a bug with a browser wallet on chain 1)", () => {
     const r = checkWriteReadiness({ ...base_, walletChainId: base.id });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.message).toContain("Cake Wallet cannot switch to this chain");
+    if (!r.ok) {
+      expect(r.message).toContain(`chain ${base.id}`);
+      expect(r.message).toContain("Switch the wallet to chain 31337");
+      expect(r.message).not.toMatch(/cake wallet/i);
+    }
   });
 
   it("refuses when the deployment has no contract (placeholder zero address)", () => {

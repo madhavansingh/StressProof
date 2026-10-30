@@ -1,0 +1,2 @@
+evidence_hash,dataset_id,market_id,shock_bps,model_id,liquidatable_accounts,residual_bad_debt_usd8,liquidation_volume_usd8,debt_at_risk_usd8,data_class
+0x7f427d2c66ff24dd70014a717706d17a25d0070d67c16f69cd1ae9f3777a25f0,weth-stable-fixture-v1,aave-v3-eth-weth-stable,-3000,static-liquidation-v1,4,200000000001,3174300000001,3374300000002,SYNTHETIC

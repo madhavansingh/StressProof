@@ -229,7 +229,7 @@ export function CommandCenterSection() {
                 </span>
               </div>
               <span className="text-[10px] text-muted-foreground uppercase font-mono">
-                BLOCK_FIXTURE: #19,500,000
+                BLOCK_FIXTURE: #19,000,000
               </span>
             </div>
 
@@ -291,7 +291,7 @@ export function CommandCenterSection() {
             <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-border">
               <div className="text-[10px] text-muted-foreground uppercase flex items-center gap-2">
                 <span className="h-1.5 w-1.5 bg-emerald-400" />
-                <span>WASM REPLAYER DETERMINISM: VERIFIED 0% VARIANCE</span>
+                <span>PYTHON REPLAYER: BYTE-IDENTICAL RE-RUNS</span>
               </div>
 
               <div className="flex items-center gap-3">

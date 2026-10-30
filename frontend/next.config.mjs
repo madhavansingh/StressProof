@@ -1,6 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // StressProof uses no next/image. Turning the optimizer off removes /_next/image, which has unpatched
+  // advisories in Next.js 14.2.x (RCE with crafted AVIF/SVG, DoS, unbounded disk cache). See README,
+  // "Supply-chain scan".
+  images: { unoptimized: true },
   webpack: (config) => {
     config.externals.push("pino-pretty", "lokijs", "encoding");
     config.resolve.fallback = {

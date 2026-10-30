@@ -4,7 +4,8 @@ import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import { runStressTest, fetchDatasets } from "@/lib/api/client";
 import { formatUsd8, formatAddress } from "@/lib/format";
-import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useTxReceipt } from "@/lib/web3/useTxReceipt";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 import { formatEther, type Abi, type Hex } from "viem";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,7 +38,7 @@ export default function StressPage() {
     {
       datasetId: "weth-stable-fixture-v1",
       network: "ethereum-mainnet-fork",
-      forkBlock: 19500000,
+      forkBlock: 19000000,
       counts: { real: 0, synthetic: 5 },
       dataClass: "SYNTHETIC",
     },
@@ -59,11 +60,9 @@ export default function StressPage() {
     reset: resetPost,
   } = useWriteContract();
 
-  const {
-    data: receipt,
-    isLoading: isPostConfirming,
-    isSuccess: isPostConfirmed,
-  } = useWaitForTransactionReceipt({ hash: postTxHash });
+  // Settles reverted receipts too (wagmi's receipt hook throws on them and would leave this pending).
+  const { outcome: postOutcome, isConfirming: isPostConfirming } = useTxReceipt(postTxHash, ACTIVE_CHAIN_ID);
+  const receipt = postOutcome?.receipt;
 
   useEffect(() => {
     fetchDatasets()
@@ -90,21 +89,22 @@ export default function StressPage() {
     if (!receipt || !result) return;
     try {
       const posted = settlePublishReceipt(receipt, config.registry.address, result.evidenceHash, () => {
-        queryClient.invalidateQueries();
+        // Refresh claim and vault reads; the settled receipt itself is final.
+        queryClient.invalidateQueries({ predicate: (q) => q.queryKey[0] !== "stressproof-tx-receipt" });
       });
       if (posted.ok) {
         setPublishedClaimId(posted.claimId.toString());
         setPublishFailure(null);
       } else {
         setPublishedClaimId(null);
-        setPublishFailure(posted.reason);
+        setPublishFailure(postOutcome?.revertReason ? `${posted.reason}: ${postOutcome.revertReason}` : posted.reason);
       }
     } catch (err) {
       console.warn("Could not decode the postClaim receipt:", err);
       setPublishedClaimId(null);
       setPublishFailure("Could not decode the transaction receipt.");
     }
-  }, [receipt, config, result, queryClient]);
+  }, [receipt, postOutcome, config, result, queryClient]);
 
   const activeDataset = datasets.find((d) => d.datasetId === selectedDataset) || datasets[0];
   const activeDataClass = result?.dataClass || activeDataset?.dataClass || "SYNTHETIC";

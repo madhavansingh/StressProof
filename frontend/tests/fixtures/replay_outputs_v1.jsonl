@@ -1,0 +1,6 @@
+{"collateralValueUsd8":"2100000000000","id":"synth-0001","liquidatable":true,"repaidUsd8":"2000000000000","residualUsd8":"0"}
+{"collateralValueUsd8":"1050000000000","id":"synth-0002","liquidatable":true,"repaidUsd8":"1000000000000","residualUsd8":"200000000000"}
+{"collateralValueUsd8":"2100000000000","id":"synth-0003","liquidatable":false,"repaidUsd8":"0","residualUsd8":"0"}
+{"collateralValueUsd8":"210000000000","id":"synth-0004","liquidatable":false,"repaidUsd8":"0","residualUsd8":"0"}
+{"collateralValueUsd8":"210000000000","id":"synth-0005","liquidatable":true,"repaidUsd8":"174300000001","residualUsd8":"0"}
+{"collateralValueUsd8":"0","id":"synth-0006","liquidatable":true,"repaidUsd8":"0","residualUsd8":"1"}

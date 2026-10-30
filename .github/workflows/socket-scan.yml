@@ -1,0 +1,36 @@
+# Socket supply-chain scan (WP-1; implementation plan S-13).
+# Scans frontend/package-lock.json (npm) and the uv workspace (uv.lock) with the pinned Socket CLI via
+# scripts/socket_scan.sh. Needs the repository secret SOCKET_SECURITY_API_TOKEN (a Socket API token with
+# full-scans:create, full-scans:list and security-policy:read). Without it the job fails with
+# "Socket scan NOT RUN" instead of passing silently. Pull requests from forks receive no secrets.
+name: Socket supply-chain scan
+
+on:
+  pull_request:
+  push:
+    branches: [main, blockchain]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  socket-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22" # the Socket CLI requires Node.js 22 or newer
+      - name: Socket scan
+        env:
+          SOCKET_CLI_API_TOKEN: ${{ secrets.SOCKET_SECURITY_API_TOKEN }}
+        run: bash scripts/socket_scan.sh
+      - name: Keep the scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: socket-report
+          path: socket-report/
+          if-no-files-found: ignore

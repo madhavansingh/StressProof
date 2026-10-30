@@ -1,0 +1,10 @@
+# Socket configuration (https://docs.socket.dev/docs/socket-yml). Used by the Socket GitHub App and CLI.
+# Scanned dependency manifests: frontend/package.json + frontend/package-lock.json (npm) and the uv
+# workspace pyproject.toml files + uv.lock (PyPI). See scripts/socket_scan.sh and README "Supply-chain scan".
+version: 2
+
+projectIgnorePaths:
+  # forge-std is a git submodule (Foundry), not an npm dependency; Socket does not cover submodules.
+  - "contracts/lib"
+  # Generated scan output.
+  - "socket-report"

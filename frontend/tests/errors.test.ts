@@ -57,3 +57,18 @@ describe("F4: Contract Error Decoding and §19.4 Sentences", () => {
   });
 });
 
+
+describe("Registry errors met by challenge and withdraw read clearly", () => {
+  it.each([
+    ["CounterEqualsClaim", "different result"],
+    ["AttesterCannotChallenge", "own claim"],
+    ["NothingToWithdraw", "no credited balance"],
+  ])("%s", async (errorName, phrase) => {
+    const { IStressRegistryAbi } = await import("../src/lib/contracts");
+    const data = encodeErrorResult({ abi: IStressRegistryAbi, errorName } as never);
+    const decoded = decodeContractError({ data });
+    expect(decoded.errorName).toBe(errorName);
+    expect(decoded.userMessage).toContain(errorName);
+    expect(decoded.userMessage).toContain(phrase);
+  });
+});

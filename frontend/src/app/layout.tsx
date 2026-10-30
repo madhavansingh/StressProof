@@ -12,7 +12,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Superconscious | StressProof — Brutalist Risk Settlement Layer",
   description:
-    "An open, challengeable layer for AI-generated lending-market risk claims. Deterministic Wasm replayer, bonded optimistic attestations, and automated vault defense.",
+    "An open, challengeable layer for AI-generated lending-market risk claims. Deterministic Python replayer, bonded optimistic attestations, and automated vault defense.",
 };
 
 export const viewport: Viewport = {

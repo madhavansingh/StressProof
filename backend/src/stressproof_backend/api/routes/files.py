@@ -1,5 +1,5 @@
 """
-Routes for case-files and replay-reports.
+Routes for case-files, replay-reports and (read-only) replay-outputs.
 Matches implementationplan.md §14, C-03 and C-11: GET returns the stored bytes unchanged.
 """
 
@@ -56,6 +56,21 @@ async def get_case_file(evidence_hash: str, store=Depends(get_store)):
     if data is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Case file not found")
     return raw_json(data, evidence_hash)
+
+
+@router.get("/replay-outputs/{evidence_hash}")
+async def get_replay_outputs(evidence_hash: str, store=Depends(get_store)):
+    """Per-account outcomes written by /stress/run (plan §8.5), as stored. Derived data for the WP-6 graph;
+    not committed on chain, so no X-Content-Keccak256 header: these bytes do not hash to the evidenceHash."""
+    check_hash(evidence_hash)
+    data = await store.get_replay_outputs(evidence_hash)
+    if data is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Replay outputs not found")
+    return Response(
+        content=data,
+        media_type="application/x-ndjson",
+        headers={"Cache-Control": IMMUTABLE, "X-Evidence-Hash": evidence_hash},
+    )
 
 
 @router.post("/case-files", status_code=status.HTTP_201_CREATED)

@@ -2,9 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useTxReceipt } from "@/lib/web3/useTxReceipt";
+import { decodeContractError } from "@/lib/web3/errors";
+import { CreditsPanel } from "@/components/claims/CreditsPanel";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
-import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown } from "@/lib/claims";
+import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown, claimActions } from "@/lib/claims";
 import { formatUsd8, formatAddress } from "@/lib/format";
 import { formatEther, keccak256 } from "viem";
 import { checkWriteReadiness, describeWalletError } from "@/lib/web3/walletPolicy";
@@ -40,18 +43,44 @@ export default function ClaimsPage() {
   // Active dispute / challenge modal state
   const [activeModalClaim, setActiveModalClaim] = useState<OnChainClaim | null>(null);
   const [challengeReason, setChallengeReason] = useState<"WRONG_RESULT" | "EVIDENCE_INVALID">("WRONG_RESULT");
-  const [counterDebtInput, setCounterDebtInput] = useState<string>("200000000001");
-  const [reportURIInput, setReportURIInput] = useState<string>("http://127.0.0.1:8000/replay-reports/report_sample.json");
+  const [counterDebtInput, setCounterDebtInput] = useState<string>("");
+  // No default: a challenge must point at a real replay report (served as /replay-reports/0x<64 hex>).
+  const [reportURIInput, setReportURIInput] = useState<string>("");
 
   // Write operations
   const { data: writeTxHash, writeContract, isPending: isWritePending, error: writeError, reset: resetWrite } = useWriteContract();
-  const { data: txReceipt, isLoading: isTxConfirming, isSuccess: isTxConfirmed } = useWaitForTransactionReceipt({ hash: writeTxHash });
+  // Settles reverted receipts too (wagmi's receipt hook throws on them and would leave this pending).
+  const { outcome: writeOutcome, isConfirming: isTxConfirming } = useTxReceipt(writeTxHash, ACTIVE_CHAIN_ID);
+  const isTxConfirmed = Boolean(writeOutcome);
   const writePhase = txPhase({
     simulationPassed: false,
     awaitingSignature: isWritePending,
     hash: writeTxHash,
-    receiptStatus: txReceipt?.status,
+    receiptStatus: writeOutcome?.status,
   });
+
+  /**
+   * Simulates a registry write from the connected account before asking the wallet to sign, so a
+   * revert the chain would produce (window closed, counter equals claim, ...) is explained instead
+   * of being signed and mined.
+   */
+  async function simulateRegistryWrite(functionName: string, args: readonly unknown[], value?: bigint): Promise<boolean> {
+    if (!publicClient || !address) return false;
+    try {
+      await publicClient.simulateContract({
+        account: address,
+        address: config.registry.address,
+        abi: config.registry.abi,
+        functionName: functionName as never,
+        args: args as never,
+        value,
+      } as never);
+      return true;
+    } catch (err: unknown) {
+      setGuardError(`Nothing sent: ${functionName} would revert (${decodeContractError(err).userMessage}).`);
+      return false;
+    }
+  }
 
   /** Connected wallet on the deployment chain, or a message and no write. */
   function writeChainOrNull(): ConfiguredChainId | null {
@@ -165,10 +194,11 @@ export default function ClaimsPage() {
     }
   }
 
-  function handleFinalize(id: bigint) {
+  async function handleFinalize(id: bigint) {
     resetWrite();
     const chainId = writeChainOrNull();
     if (chainId === null) return;
+    if (!(await simulateRegistryWrite("finalize", [id]))) return;
     writeContract({
       chainId,
       address: config.registry.address,
@@ -178,10 +208,11 @@ export default function ClaimsPage() {
     });
   }
 
-  function handleExpire(id: bigint) {
+  async function handleExpire(id: bigint) {
     resetWrite();
     const chainId = writeChainOrNull();
     if (chainId === null) return;
+    if (!(await simulateRegistryWrite("expireUnresolved", [id]))) return;
     writeContract({
       chainId,
       address: config.registry.address,
@@ -216,12 +247,14 @@ export default function ClaimsPage() {
       return;
     }
 
+    const challengeArgs = [activeModalClaim.id, reasonCode, counterDebt, reportURIInput.trim(), reportHash] as const;
+    if (!(await simulateRegistryWrite("challenge", challengeArgs, config.bondWei))) return;
     writeContract({
       chainId,
       address: config.registry.address,
       abi: config.registry.abi,
       functionName: "challenge",
-      args: [activeModalClaim.id, reasonCode, counterDebt, reportURIInput.trim(), reportHash],
+      args: challengeArgs,
       value: config.bondWei,
     });
 
@@ -242,7 +275,7 @@ export default function ClaimsPage() {
             </span>
           </div>
           <p className="text-xs text-muted-foreground mt-1 max-w-2xl leading-relaxed uppercase">
-            On-chain risk claims verified by deterministic Wasm replayer. Each claim requires a {formatEther(config.bondWei)} ETH bond.
+            On-chain risk claims checked by deterministic replay. Each claim requires a {formatEther(config.bondWei)} ETH bond.
           </p>
         </div>
 
@@ -297,6 +330,7 @@ export default function ClaimsPage() {
             )}
             <span>
               {txPhaseLabel(writePhase)}: <code>{writeTxHash.slice(0, 16)}...</code>
+              {writePhase === "mined-reverted" && writeOutcome?.revertReason && <> — {writeOutcome.revertReason}</>}
             </span>
           </div>
           <button onClick={() => resetWrite()} className="text-emerald-400 hover:text-white uppercase font-bold text-[10px]">
@@ -316,6 +350,8 @@ export default function ClaimsPage() {
           </button>
         </div>
       )}
+
+      <CreditsPanel />
 
       {/* RPC Failure Notice */}
       {rpcError && (
@@ -381,8 +417,10 @@ export default function ClaimsPage() {
                     blockTimestamp,
                     localElapsed
                   );
-                  const isChallengeable = c.stateName === "Pending" && !countdown.isExpired;
-                  const canFinalize = c.stateName === "Pending" && countdown.isExpired;
+                  const actions = claimActions(c, blockTimestamp + localElapsed);
+                  const isChallengeable = actions.challenge;
+                  const canFinalize = actions.finalize;
+                  const canExpire = actions.expire;
 
                   return (
                     <tr key={c.id.toString()} className="hover:bg-muted/10 transition-colors">
@@ -424,7 +462,9 @@ export default function ClaimsPage() {
                             <button
                               onClick={() => {
                                 setActiveModalClaim(c);
-                                setCounterDebtInput(c.claimedResidualBadDebt.toString());
+                                // A WRONG_RESULT counter equal to the claim always reverts (CounterEqualsClaim):
+                                // the challenger enters the value from their own replay.
+                                setCounterDebtInput("");
                               }}
                               className="px-2.5 py-1 border border-[#ea580c] bg-[#ea580c] text-background text-[11px] font-bold uppercase hover:bg-foreground hover:border-foreground transition-all"
                             >
@@ -438,6 +478,16 @@ export default function ClaimsPage() {
                               className="px-2.5 py-1 border border-emerald-500 bg-emerald-950/60 text-emerald-300 text-[11px] font-bold uppercase hover:bg-emerald-900 transition-all disabled:opacity-50"
                             >
                               FINALIZE
+                            </button>
+                          )}
+                          {canExpire && (
+                            <button
+                              disabled={isWritePending}
+                              onClick={() => handleExpire(c.id)}
+                              title="Resolution window passed without a decision: refunds both bonds"
+                              className="px-2.5 py-1 border border-border bg-secondary text-foreground text-[11px] font-bold uppercase hover:bg-muted transition-all disabled:opacity-50"
+                            >
+                              EXPIRE
                             </button>
                           )}
                         </div>
@@ -498,6 +548,7 @@ export default function ClaimsPage() {
                     type="text"
                     value={counterDebtInput}
                     onChange={(e) => setCounterDebtInput(e.target.value)}
+                    placeholder="Residual bad debt from your replay, in USD8 (must differ from the claim)"
                     className="w-full bg-background border-2 border-border p-2 text-xs text-foreground font-mono focus:border-foreground outline-none"
                   />
                   <span className="text-[10px] text-muted-foreground mt-0.5 block">
@@ -514,8 +565,12 @@ export default function ClaimsPage() {
                   type="text"
                   value={reportURIInput}
                   onChange={(e) => setReportURIInput(e.target.value)}
+                  placeholder="https://… or ipfs://… (e.g. <backend>/replay-reports/0x<64 hex>)"
                   className="w-full bg-background border-2 border-border p-2 text-xs text-foreground font-mono focus:border-foreground outline-none"
                 />
+                <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                  The replay report your counter value comes from. Its bytes are hashed and committed on chain.
+                </span>
               </div>
             </div>
 
@@ -527,7 +582,14 @@ export default function ClaimsPage() {
                 CANCEL
               </button>
               <button
-                disabled={isWritePending}
+                disabled={isWritePending || !reportURIInput.trim() || (challengeReason === "WRONG_RESULT" && !counterDebtInput.trim())}
+                title={
+                  !reportURIInput.trim()
+                    ? "Enter the replay report URI first"
+                    : challengeReason === "WRONG_RESULT" && !counterDebtInput.trim()
+                      ? "Enter the counter value from your replay first"
+                      : undefined
+                }
                 onClick={submitChallenge}
                 className="px-5 py-2 bg-[#ea580c] text-white border-2 border-[#ea580c] text-xs font-bold uppercase tracking-wider hover:bg-foreground hover:text-background hover:border-foreground transition-all disabled:opacity-50"
               >

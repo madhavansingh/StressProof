@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useTxReceipt } from "@/lib/web3/useTxReceipt";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown } from "@/lib/claims";
 import { verifyEvidenceUri, VerificationResult, resolveUri } from "@/lib/validation/verify";
@@ -70,13 +71,14 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
     reset: resetApply,
   } = useWriteContract();
 
-  const { data: applyReceipt, isLoading: isApplyConfirming, isSuccess: isApplyConfirmed } =
-    useWaitForTransactionReceipt({ hash: applyTxHash });
+  // Settles reverted receipts too (wagmi's receipt hook throws on them and would leave this pending).
+  const { outcome: applyOutcome, isConfirming: isApplyConfirming } = useTxReceipt(applyTxHash, ACTIVE_CHAIN_ID);
+  const isApplyConfirmed = Boolean(applyOutcome);
   const applyPhase = txPhase({
     simulationPassed: applySimulationPassed,
     awaitingSignature: isApplyPending,
     hash: applyTxHash,
-    receiptStatus: applyReceipt?.status,
+    receiptStatus: applyOutcome?.status,
   });
 
   // Borrow Simulation states
@@ -159,6 +161,11 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
       loadData();
     }
   }, [isApplyConfirmed, loadData]);
+
+  // A borrow result describes the vault limits it ran against; drop it when those limits change.
+  useEffect(() => {
+    setBorrowOutcome(null);
+  }, [vault?.maxLtvBps, vault?.borrowPaused]);
 
   // Apply claim to DemoVault: the vault contract decides (eth_call first), then the wallet sends
   async function handleApplyToVault() {
@@ -311,7 +318,10 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
           }`}
         >
           <span>{applyTxHash ? `TX_HASH: ${applyTxHash}` : "APPLY_CLAIM"}</span>
-          <span className="font-bold uppercase text-[10px]">{txPhaseLabel(applyPhase)}</span>
+          <span className="font-bold uppercase text-[10px]">
+            {txPhaseLabel(applyPhase)}
+            {applyPhase === "mined-reverted" && applyOutcome?.revertReason && ` — ${applyOutcome.revertReason}`}
+          </span>
         </div>
       )}
 

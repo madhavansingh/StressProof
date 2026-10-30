@@ -90,7 +90,7 @@ export default function DashboardMarketsPage() {
       <div className="border border-border bg-card p-3 text-xs text-muted-foreground flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="h-2 w-2 bg-[#ea580c] animate-blink shrink-0" />
-          <span className="text-foreground font-bold shrink-0">[GATE-24_VERIFIED]</span>
+          <span className="text-foreground font-bold shrink-0">[GATE-24: LOCAL PASS · TESTNET PENDING]</span>
           <span className="truncate sm:overflow-visible sm:whitespace-normal">
             Aave v3 WETH/Stable credit market deterministically monitored via bonded optimistic claims.
           </span>

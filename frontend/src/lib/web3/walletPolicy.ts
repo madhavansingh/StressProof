@@ -53,14 +53,12 @@ export function checkWriteReadiness(input: WriteReadinessInput): WriteReadiness 
     };
   }
   if (walletChainId !== targetChainId) {
-    const cakeNote =
-      walletChainId !== undefined && cakeWalletSupportsChain(walletChainId) && !cakeWalletSupportsChain(targetChainId)
-        ? " Cake Wallet cannot switch to this chain: its WalletConnect support covers Ethereum, Polygon, Base, Arbitrum, BNB Smart Chain and Robinhood Chain only."
-        : "";
+    // Wallet-specific advice (for example a wallet that cannot add this chain) comes from the
+    // wrong-network banner, which acts on what a switch request actually returned.
     return {
       ok: false,
       kind: "wrong-network",
-      message: `Nothing sent: the wallet is on chain ${walletChainId ?? "unknown"}, StressProof is on chain ${targetChainId}.${cakeNote}`,
+      message: `Nothing sent: the wallet is on chain ${walletChainId ?? "unknown"}, StressProof is on chain ${targetChainId}. Switch the wallet to chain ${targetChainId} to send transactions.`,
     };
   }
   return { ok: true, chainId: targetChainId };

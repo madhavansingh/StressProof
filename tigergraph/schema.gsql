@@ -1,0 +1,35 @@
+// StressProof graph schema (WP-2; implementation plan §17.1 with the C-05 composite ids).
+// Informational only: nothing in this graph feeds a claim verdict.
+//
+// Ids: Account.vid = "<datasetId>:<accountId>", Asset.vid = "<datasetId>:<symbol>" or "<datasetId>:STABLE_DEBT".
+// Amounts are STRING: 64-bit GSQL integers overflow for wei amounts (§17.1). Every vertex carries data_class
+// (SYNTHETIC / REAL / MIXED) so a SYNTHETIC fixture is never shown as real data.
+// Global DDL; apply once. Re-running fails with "already exists", which the setup script treats as done.
+
+USE GLOBAL
+
+CREATE VERTEX SP_Dataset (PRIMARY_ID dataset_id STRING, data_class STRING, snapshot_hash STRING,
+                          fork_block UINT, network STRING) WITH primary_id_as_attribute="true"
+CREATE VERTEX SP_Market (PRIMARY_ID market_id STRING, dataset_id STRING, data_class STRING)
+                          WITH primary_id_as_attribute="true"
+CREATE VERTEX SP_Asset (PRIMARY_ID vid STRING, symbol STRING, role STRING, price_usd8 STRING, lt_bps UINT,
+                        bonus_bps UINT, decimals UINT, dataset_id STRING, data_class STRING)
+                        WITH primary_id_as_attribute="true"
+CREATE VERTEX SP_Account (PRIMARY_ID vid STRING, account_id STRING, origin STRING, debt_usd8 STRING,
+                          collateral_amount STRING, collateral_usd8 STRING, dataset_id STRING, data_class STRING)
+                          WITH primary_id_as_attribute="true"
+CREATE VERTEX SP_CaseFile (PRIMARY_ID evidence_hash STRING, dataset_id STRING, market_id STRING, shock_bps INT,
+                           model_id STRING, liquidatable_accounts UINT, residual_bad_debt_usd8 STRING,
+                           liquidation_volume_usd8 STRING, debt_at_risk_usd8 STRING, data_class STRING)
+                           WITH primary_id_as_attribute="true"
+
+CREATE DIRECTED EDGE SP_INCLUDED_IN (FROM SP_Account, TO SP_Dataset)
+CREATE DIRECTED EDGE SP_COLLATERAL_IN (FROM SP_Account, TO SP_Asset, amount STRING)
+CREATE DIRECTED EDGE SP_BORROWS (FROM SP_Account, TO SP_Asset, debt_usd8 STRING)
+CREATE DIRECTED EDGE SP_LISTS (FROM SP_Market, TO SP_Asset)
+CREATE DIRECTED EDGE SP_REPLAYS (FROM SP_CaseFile, TO SP_Market)
+CREATE DIRECTED EDGE SP_OUTCOME (FROM SP_CaseFile, TO SP_Account, collateral_value_usd8 STRING,
+                                 liquidatable BOOL, repaid_usd8 STRING, residual_usd8 STRING)
+
+CREATE GRAPH StressProof (SP_Dataset, SP_Market, SP_Asset, SP_Account, SP_CaseFile, SP_INCLUDED_IN,
+                          SP_COLLATERAL_IN, SP_BORROWS, SP_LISTS, SP_REPLAYS, SP_OUTCOME)

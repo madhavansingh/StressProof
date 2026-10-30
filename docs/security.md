@@ -20,7 +20,7 @@ This document outlines the security architecture, threat model, and explicit mit
 | **S-10** | Unauthorized writes to backend | `backend/` | Protect all `POST` routes with a bearer authentication token (`$API_WRITE_TOKEN`). |
 | **S-11** | Cross-Site Scripting (XSS) via rationale or URIs | `frontend/` | Render agent rationale as plain text without HTML interpolation. Restrict external links to `https:` and `ipfs:`. |
 | **S-12** | Private key exposure | Repository | `.env` gitignored, `.env.example` scrubbed of secrets. Separate keys for each of the 5 roles. |
-| **S-13** | Dependency supply chain attacks | Python / Node | Pinned lockfiles (`uv.lock`, `pnpm-lock.yaml`), automated Socket scan. |
+| **S-13** | Dependency supply chain attacks | Python / Node | Pinned lockfiles (`uv.lock`, `frontend/package-lock.json`), Socket scan (`make socket-scan`, CI workflow `socket-scan.yml`; needs a Socket API token), npm holds back unapproved install scripts. See README, "Supply-chain scan". |
 | **S-14** | Prompt injection or malformed LLM outputs | `agents/attester/` | LLM outputs are validated strictly by code (`shockBps` within `[-9000, -1]`). On validation failure, fall back to default fixed scenario. |
 | **S-15** | Hash mismatch due to NIST SHA-3 vs. Keccak | `core/` | Use `eth-hash` / `eth-utils` exclusively. Pinned unit test verifying `keccak256("")`. |
 | **S-16** | Client-Side Write Token Exposure | `frontend/` | **Mitigated:** Write operations (`POST /stress/run`) route through a server-side Next.js Route Handler (`frontend/src/app/api/stress/run/route.ts`). The private `API_WRITE_TOKEN` is maintained strictly server-side and never bundled into client JavaScript. Browser client requests require no write token. |

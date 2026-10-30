@@ -1,0 +1,7 @@
+from,to,amount
+weth-stable-fixture-v1:synth-0001,weth-stable-fixture-v1:WETH,10000000000000000000
+weth-stable-fixture-v1:synth-0002,weth-stable-fixture-v1:WETH,5000000000000000000
+weth-stable-fixture-v1:synth-0003,weth-stable-fixture-v1:WETH,10000000000000000000
+weth-stable-fixture-v1:synth-0004,weth-stable-fixture-v1:WETH,1000000000000000000
+weth-stable-fixture-v1:synth-0005,weth-stable-fixture-v1:WETH,1000000000000000000
+weth-stable-fixture-v1:synth-0006,weth-stable-fixture-v1:WETH,1

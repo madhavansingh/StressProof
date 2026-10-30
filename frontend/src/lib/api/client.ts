@@ -8,7 +8,7 @@
 
 import { FeedResponse } from "@/types";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
+export const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:8000";
 
 export async function fetchDatasets() {
   const res = await fetch(`${BACKEND_URL}/datasets`, {

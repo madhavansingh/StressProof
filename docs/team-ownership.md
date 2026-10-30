@@ -1,5 +1,11 @@
 # StressProof — Team Ownership & Integration Contracts
 
+> **Governance update (2026-10-30):** StressProof is now a **single-owner project**. The sole project
+> owner holds decision authority and overall accountability, and develops across the whole repository.
+> The ownership matrix and timeline below are kept as the history of the original three-contributor
+> split and as a map of review focus; they no longer restrict who may change a directory or who
+> approves decisions. See `CONTRIBUTING.md` (Governance).
+
 To ensure independent, unblocked velocity across the 40-hour timeline, this document specifies code ownership, review responsibilities, and synchronization gates.
 
 ---
@@ -34,6 +40,9 @@ Hour 16 ── A -> All: deployments/84532.json (Testnet deployment with real th
 Hour 20 ── B -> C: Live backend running at BACKEND_PUBLIC_URL with live agent feed
 Hour 24 ── GATE-24: Full Phase 1 Flow Pass (Local Anvil + Testnet)
            * No Phase 2 work starts until GATE-24 passes!
+           * AMENDED (2026-10-30, approved by the sole project owner):
+             docs/phase2_gate_amendment.md allows a conditional Phase 2 start
+             while GATE-24 is pending. The gate itself is unchanged.
 Hour 34 ── Phase 2 Feature Freeze (TigerGraph & LLM proposals)
 Hour 38 ── Rehearsal & Backup Video Recording
 Hour 39 ── Total Code Freeze
