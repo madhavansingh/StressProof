@@ -7,7 +7,8 @@ import { useTxReceipt } from "@/lib/web3/useTxReceipt";
 import { decodeContractError } from "@/lib/web3/errors";
 import { CreditsPanel } from "@/components/claims/CreditsPanel";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
-import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown, claimActions } from "@/lib/claims";
+import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown, claimActions, chainNowSec } from "@/lib/claims";
+import { simulateAtNextBlock } from "@/lib/web3/simulateAtNextBlock";
 import { formatUsd8, formatAddress } from "@/lib/format";
 import { formatEther, keccak256 } from "viem";
 import { checkWriteReadiness, describeWalletError } from "@/lib/web3/walletPolicy";
@@ -67,14 +68,15 @@ export default function ClaimsPage() {
   async function simulateRegistryWrite(functionName: string, args: readonly unknown[], value?: bigint): Promise<boolean> {
     if (!publicClient || !address) return false;
     try {
-      await publicClient.simulateContract({
+      // At the next block's timestamp: a quiet local chain's latest block can be minutes old.
+      await simulateAtNextBlock(publicClient, {
         account: address,
         address: config.registry.address,
-        abi: config.registry.abi,
-        functionName: functionName as never,
-        args: args as never,
+        abi: config.registry.abi as never,
+        functionName,
+        args,
         value,
-      } as never);
+      });
       return true;
     } catch (err: unknown) {
       setGuardError(`Nothing sent: ${functionName} would revert (${decodeContractError(err).userMessage}).`);
@@ -176,6 +178,8 @@ export default function ClaimsPage() {
 
   // Compute local elapsed seconds since block timestamp was fetched
   const localElapsed = fetchTimestamp > 0 ? Math.floor((Date.now() - fetchTimestamp) / 1000) : 0;
+  // Later of (latest block + local elapsed) and the wall clock; see chainNowSec.
+  const nowSec = blockTimestamp > 0 ? chainNowSec(blockTimestamp + localElapsed, Date.now() / 1000) : 0;
 
   function getStatusBadge(status: string) {
     switch (status) {
@@ -412,12 +416,8 @@ export default function ClaimsPage() {
               </thead>
               <tbody className="divide-y divide-border">
                 {claims.map((c) => {
-                  const countdown = calculateBlockTimeCountdown(
-                    c.challengeDeadline,
-                    blockTimestamp,
-                    localElapsed
-                  );
-                  const actions = claimActions(c, blockTimestamp + localElapsed);
+                  const countdown = calculateBlockTimeCountdown(c.challengeDeadline, nowSec, 0);
+                  const actions = claimActions(c, nowSec);
                   const isChallengeable = actions.challenge;
                   const canFinalize = actions.finalize;
                   const canExpire = actions.expire;

@@ -38,6 +38,24 @@ def _client(request: Request, settings) -> Optional[TigerGraphClient]:
     return client
 
 
+@router.get("/graph/tigergraph/health")
+async def get_tigergraph_health(request: Request, settings=Depends(get_settings)):
+    """Read-only TigerGraph check: reachable, authenticated, schema types. Never returns credentials."""
+    try:
+        client = _client(request, settings)
+    except TigerGraphError as exc:
+        return _unavailable(f"TigerGraph is misconfigured on this backend: {exc}")
+    if client is None:
+        return _unavailable("TigerGraph is not configured on this backend (TG_HOST unset)")
+    try:
+        return await run_in_threadpool(client.health)
+    except TigerGraphError as exc:
+        logger.warning("TigerGraph health check failed: %s", exc)
+        if exc.status in (401, 403):
+            request.app.state.tigergraph = None
+        return _unavailable(f"TigerGraph check failed: {exc}")
+
+
 @router.get("/graph/exposure")
 async def get_graph_exposure(request: Request, evidenceHash: str = "", top: int = Query(10, ge=1, le=MAX_TOP),
                              settings=Depends(get_settings), store=Depends(get_store)):

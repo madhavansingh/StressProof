@@ -11,6 +11,30 @@ verdict: verdicts come only from deterministic replay.
 | `data/*.csv` | Rows generated from the golden **SYNTHETIC** fixture `data/fixtures/casefile_v1.json` by `cli export` |
 | `backend/src/stressproof_backend/tigergraph/` | REST client, row builder, loader and reconciler, exposure service, CLI |
 
+## Status (2026-10-30, frozen for submission)
+
+- Schema: **created** in TigerGraph Savanna by the project owner (5 vertex types, 6 edge types).
+- CSV data loading: **pending**. The graph holds no StressProof data yet.
+- The app shows **TIGERGRAPH UNAVAILABLE** and uses the local SYNTHETIC replay graph. No TigerGraph result is
+  displayed or claimed.
+- To finish later: set the `TG_*` values in `.env`, then run `load`, `reconcile`, `install` and `query` below.
+  Loading uses the REST++ API, not manual uploads.
+
+## Connection check (read-only)
+
+```bash
+uv run python -m stressproof_backend.tigergraph.cli check
+```
+
+Also available from the running backend as `GET /graph/tigergraph/health`.
+
+- **Auth:** the database secret is sent as `Authorization: GSQL-Secret <secret>`. If that is refused, a REST++
+  token is minted from the same secret.
+- **What it does:** it reads the graph schema only, and reports the vertex and edge types plus whether all 5
+  expected vertex types and 6 expected edge types exist.
+- **Host:** `TG_HOST` must be the exact workspace endpoint from Savanna (workspace > Connect > Connect from
+  API), as an https origin with no path. A hostname that does not resolve is reported as a DNS error.
+
 ## Data (SYNTHETIC)
 
 Generated from the case file and `stressproof_core.replay`; nothing is inferred. Every vertex carries

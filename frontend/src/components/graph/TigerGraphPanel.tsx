@@ -43,7 +43,11 @@ export function TigerGraphPanel({ evidenceHash }: { evidenceHash: string }) {
       </div>
 
       {result?.status === "unavailable" && (
-        <p className="text-xs text-muted-foreground">{result.detail} The local graph above does not depend on TigerGraph.</p>
+        <div className="text-xs text-muted-foreground space-y-1">
+          <p>Live TigerGraph data is not connected to this app, so no TigerGraph results are shown.</p>
+          <p>The graph above comes from local deterministic replay of the SYNTHETIC fixture, not from TigerGraph.</p>
+          <p className="text-[10px]">Backend: {result.detail}</p>
+        </div>
       )}
       {result?.status === "notLoaded" && (
         <p className="text-xs text-muted-foreground">TigerGraph answered, but this case file has not been loaded into the graph.</p>

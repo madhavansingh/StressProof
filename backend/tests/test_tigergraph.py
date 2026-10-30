@@ -29,8 +29,16 @@ def config(**kw):
 class FakeTigerGraph:
     """Holds upserted vertices and answers the REST calls the client makes."""
 
-    def __init__(self, token_route="/gsql/v1/tokens"):
+    SCHEMA = {"GraphName": "StressProof",
+              "VertexTypes": [{"Name": n} for n in ("SP_Dataset", "SP_Market", "SP_Asset", "SP_Account", "SP_CaseFile")],
+              "EdgeTypes": [{"Name": n} for n in ("SP_INCLUDED_IN", "SP_COLLATERAL_IN", "SP_BORROWS", "SP_LISTS",
+                                                  "SP_REPLAYS", "SP_OUTCOME")]}
+
+    def __init__(self, token_route="/gsql/v1/tokens", accept_gsql_secret=True, schema_route="/gsql/v1/schema/graphs/StressProof"):
         self.token_route = token_route
+        self.accept_gsql_secret = accept_gsql_secret
+        self.schema_route = schema_route
+        self.auth_headers = []
         self.calls = []
         self.vertices = {}
         self.edges = []
@@ -44,8 +52,15 @@ class FakeTigerGraph:
             if json.loads(req.content)["secret"] != SECRET:
                 return httpx.Response(401, json={"error": True, "message": "bad secret"})
             return httpx.Response(200, json={"error": False, "token": TOKEN})
-        if req.headers.get("authorization") != f"Bearer {TOKEN}":
+        auth = req.headers.get("authorization", "")
+        self.auth_headers.append(auth.split(" ", 1)[0])
+        ok = auth == f"Bearer {TOKEN}" or (self.accept_gsql_secret and auth == f"GSQL-Secret {SECRET}")
+        if not ok:
             return httpx.Response(401, json={"error": True, "message": "unauthorized"})
+        if path in ("/gsql/v1/schema/graphs/StressProof", "/gsqlserver/gsql/schema"):
+            if path != self.schema_route:
+                return httpx.Response(404, json={"error": True, "message": "Route not found"})
+            return httpx.Response(200, json={"error": False, "message": "", "results": self.SCHEMA})
         if path == "/restpp/echo":
             return httpx.Response(200, json={"error": False, "message": "Hello GSQL"})
         if path == "/restpp/graph/StressProof" and req.method == "POST":
@@ -172,11 +187,51 @@ def test_config_requires_https_origin_and_credentials():
             TigerGraphClient(config(**bad))
 
 
-@pytest.mark.parametrize("route", ["/gsql/v1/tokens", "/restpp/requesttoken"])
-def test_token_from_secret_on_either_route(route):
-    fake = FakeTigerGraph(token_route=route)
+def test_requests_use_the_gsql_secret_header_first():
+    fake = FakeTigerGraph()
     with client_for(fake) as c:
-        assert c.token() == TOKEN and c.echo()["message"] == "Hello GSQL"
+        assert c.echo()["message"] == "Hello GSQL"
+    assert fake.auth_headers == ["GSQL-Secret"]
+    assert ("POST", "/gsql/v1/tokens") not in fake.calls  # no token minted when the secret header works
+
+
+@pytest.mark.parametrize("route", ["/gsql/v1/tokens", "/restpp/requesttoken"])
+def test_falls_back_to_a_token_when_gsql_secret_is_refused(route):
+    fake = FakeTigerGraph(token_route=route, accept_gsql_secret=False)
+    with client_for(fake) as c:
+        assert c.echo()["message"] == "Hello GSQL"
+    assert fake.auth_headers == ["GSQL-Secret", "Bearer"]
+
+
+@pytest.mark.parametrize("route", ["/gsql/v1/schema/graphs/StressProof", "/gsqlserver/gsql/schema"])
+def test_health_reads_the_schema_and_checks_the_expected_types(route):
+    with client_for(FakeTigerGraph(schema_route=route)) as c:
+        report = c.health()
+    assert report["status"] == "connected" and report["graph"] == "StressProof" and report["schemaMatches"] is True
+    assert len(report["vertexTypes"]) == 5 and len(report["edgeTypes"]) == 6 and report["missing"] == []
+
+
+def test_health_reports_missing_types():
+    fake = FakeTigerGraph()
+    fake.SCHEMA = {**FakeTigerGraph.SCHEMA, "EdgeTypes": [{"Name": "SP_LISTS"}]}
+    with client_for(fake) as c:
+        report = c.health()
+    assert report["schemaMatches"] is False and "SP_OUTCOME" in report["missing"]
+
+
+def test_dns_failure_names_the_problem_without_secrets():
+    def nxdomain(req):
+        raise httpx.ConnectError("[Errno 8] nodename nor servname provided, or not known")
+    with TigerGraphClient(config(), transport=httpx.MockTransport(nxdomain)) as c, pytest.raises(TigerGraphError) as exc:
+        c.health()
+    assert "does not resolve in DNS" in str(exc.value) and SECRET not in str(exc.value)
+
+
+def test_tg_graphname_is_read_from_the_environment(monkeypatch):
+    from stressproof_backend.config import Settings
+    monkeypatch.setenv("TG_GRAPHNAME", "OtherGraph")
+    assert Settings(_env_file=None).TG_GRAPH == "OtherGraph"
+    assert Settings(_env_file=None, TG_GRAPH="Explicit").TG_GRAPH == "Explicit"
 
 
 def test_bad_secret_fails_without_leaking_it():
@@ -257,6 +312,18 @@ def test_route_serves_live_query_results(harness, monkeypatch):
     assert body["reconciliation"]["status"] == "matched"
     assert len(body["topExposures"]) == 2 and SECRET not in res.text and TOKEN not in res.text
     assert missing.status_code == 404 and missing.json()["status"] == "notLoaded"
+
+
+def test_health_route_reports_schema_without_secrets(harness, monkeypatch):
+    with _route_client(harness, FakeTigerGraph(), monkeypatch) as client:
+        res = client.get("/graph/tigergraph/health")
+    assert res.status_code == 200 and res.json()["schemaMatches"] is True
+    assert SECRET not in res.text and TOKEN not in res.text
+
+
+def test_health_route_without_config_is_503(client):
+    res = client.get("/graph/tigergraph/health")
+    assert res.status_code == 503 and "not configured" in res.json()["detail"]
 
 
 def test_route_reports_tigergraph_failure_as_unavailable(harness, monkeypatch):
