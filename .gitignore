@@ -87,3 +87,4 @@ data/**
 .idea/
 *.swp
 *.swo
+.env.testnet

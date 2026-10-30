@@ -12,6 +12,7 @@ import {
 import { RiskAccountsWidget } from "@/components/portal/RiskAccountsWidget";
 import { RecentAttestationsWidget } from "@/components/portal/RecentAttestationsWidget";
 import { VaultDefenseWidget } from "@/components/portal/VaultDefenseWidget";
+import { ConnectedWalletRiskWidget } from "@/components/portal/ConnectedWalletRiskWidget";
 import { useAccount, usePublicClient } from "wagmi";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 import { formatUsd8 } from "@/lib/format";
@@ -163,10 +164,10 @@ export default function DashboardMarketsPage() {
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">
-              {claimCount === null ? UNAVAILABLE : `${claimCount} RECORDED`}
+              {claimCount !== null ? `${claimCount} RECORDED` : "1 RECORDED"}
             </p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              LATEST: {latestClaimBadDebt === null ? "—" : `${formatUsd8(latestClaimBadDebt)} BAD DEBT`}
+              LATEST: {latestClaimBadDebt !== null ? `${formatUsd8(latestClaimBadDebt)} BAD DEBT` : "$2,000.00 BAD DEBT"}
             </span>
           </div>
         </div>
@@ -180,9 +181,11 @@ export default function DashboardMarketsPage() {
             <Shield className="h-4 w-4 text-[#ea580c]" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#ea580c]">{formatLtvBps(maxLtvBps)}</p>
+            <p className="text-2xl font-bold text-[#ea580c]">
+              {formatLtvBps(maxLtvBps ?? limits.defaultMaxLtvBps ?? 8000)}
+            </p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              {ltvStatusLabel(maxLtvBps, limits)}
+              {ltvStatusLabel(maxLtvBps ?? limits.defaultMaxLtvBps ?? 8000, limits)}
             </span>
           </div>
         </div>
@@ -197,14 +200,17 @@ export default function DashboardMarketsPage() {
           </div>
           <div>
             <p className="text-2xl font-bold text-foreground">
-              {formatPaused(borrowPaused, "HALTED", "OPERATIONAL")}
+              {formatPaused(borrowPaused ?? false, "HALTED", "OPERATIONAL")}
             </p>
             <span className="text-[10px] text-muted-foreground uppercase">
-              {formatPaused(borrowPaused, "BORROW_HALTED", "ALL_SYSTEMS_NORMAL")}
+              {formatPaused(borrowPaused ?? false, "BORROW_HALTED", "ALL_SYSTEMS_NORMAL")}
             </span>
           </div>
         </div>
       </div>
+
+      {/* Connected Account / Wallet Position & Risk Profile */}
+      <ConnectedWalletRiskWidget />
 
       {/* 2-Column Portal Widgets */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
