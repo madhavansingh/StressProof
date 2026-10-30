@@ -17,25 +17,31 @@ the AI, the graph and the UI never decide a dispute.
 | For | Read |
 |---|---|
 | Overview, setup, test results, limitations | [README.md](../README.md) |
-| Architecture and trust boundaries | [architecture.md](architecture.md) |
+| Architecture and trust boundaries | [ARCHITECTURE.md](ARCHITECTURE.md) |
 | Exact demo sequence and commands | [DEMO_GUIDE.md](DEMO_GUIDE.md) |
 | Full original specification | [implementationplan.md](implementationplan.md) |
+| Protocol design & bonding | [PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) |
+| Cryptographic evidence & replayer | [CRYPTOGRAPHIC_EVIDENCE.md](CRYPTOGRAPHIC_EVIDENCE.md) |
+| Security model & threat matrix | [SECURITY_MODEL.md](SECURITY_MODEL.md) |
+| Repository module structure | [REPOSITORY_STRUCTURE.md](REPOSITORY_STRUCTURE.md) |
+| Local development & setup | [DEVELOPMENT.md](DEVELOPMENT.md) |
+| End-to-end data flow | [DATA_FLOW.md](DATA_FLOW.md) |
 | Phase 2 work packages and their status | [phase2_execution_plan.md](phase2_execution_plan.md) |
 | Why Phase 2 started while GATE-24 is pending | [phase2_gate_amendment.md](phase2_gate_amendment.md) |
 | API endpoints | [../backend/README.md](../backend/README.md), [integration-contracts.md](integration-contracts.md) |
-| Security notes, dependency scan | [security.md](security.md), README "Supply-chain scan (Socket)" |
 
 ## Delivered
 
 | Component | Status | Evidence |
 |---|---|---|
 | `StressRegistry`, `DemoVault`, `MockLendingMarket` (Solidity) | Implemented, locally deployed | `forge test`: 95 passed, including invariant tests |
-| Deterministic replay `static-liquidation-v1`, case-file validation (Python) | Implemented | Golden fixture `data/fixtures/casefile_v1.*`; Python suite 739 passed |
+| Deterministic replay `static-liquidation-v1`, case-file validation (Python) | Implemented | Golden fixture `data/fixtures/casefile_v1.*`; Python suite 770 passed |
 | FastAPI backend (stress runs, case files, replay reports, replay outputs, feed) | Implemented | Backend tests; filesystem and Postgres storage |
 | Agents: attester, watcher, resolver CLI, malicious attester | Implemented | Agent tests; GATE-24 local run |
-| Frontend: landing, dashboard, stress, claims, vault, feed, graph | Implemented | vitest 217 passed; browser walk-through on 2026-10-30 |
+| Frontend: landing, dashboard, stress, claims, vault, feed, graph | Implemented | vitest 230 passed; production build passes; UI lifecycle check on 2026-10-30 (injected test wallet) |
 | WP-1 Socket supply-chain scan and triage | Complete | README "Supply-chain scan (Socket)"; `scripts/socket_scan.sh`; CI workflow |
-| WP-6 Interactive graph from replay outputs | Complete (local) | `/graph`; `GET /replay-outputs/{hash}`; 53 graph tests |
+| WP-2..5 TigerGraph | Schema created in Savanna; CSV loading pending; no live data connected | `tigergraph/`, `backend/tests/test_tigergraph.py` (fake TigerGraph) |
+| WP-6 Interactive graph from replay outputs | Complete (local), operational | `/graph`; `GET /replay-outputs/{hash}`; 53 graph tests |
 | WP-13 Wallet-signed transaction UX and fixes | Complete locally with an injected test wallet | `docs/phase2_execution_plan.md` §4; MetaMask manual check by the owner |
 | Single-owner governance, conditional Phase 2 | Recorded | `CONTRIBUTING.md`, `docs/phase2_gate_amendment.md` |
 
@@ -61,7 +67,7 @@ the AI, the graph and the UI never decide a dispute.
 ## Not implemented
 
 - LLM scenario proposer (WP-7). The attester uses a fixed −3000 bps scenario.
-- A verified live TigerGraph run: the integration (WP-2..5) is built and tested against a fake TigerGraph; it needs Savanna credentials to run live (`tigergraph/README.md`).
+- Live TigerGraph data. TigerGraph schema created successfully in Savanna (5 vertex types, 6 edge types, by the project owner); CSV data loading **pending**; no live TigerGraph data is connected to the app. The synthetic graph visualization (local deterministic replay) is operational. The loader, reconciler, query, endpoint and UI panel are built and tested against a fake TigerGraph (`tigergraph/README.md`).
 - Next.js 15.5.28+ migration (open security task; see below).
 
 ## Security notes
@@ -78,8 +84,8 @@ the AI, the graph and the UI never decide a dispute.
 
 - [x] README explains the problem, protocol, architecture, setup, tests and limitations
 - [x] Demo guide with exact commands (`docs/DEMO_GUIDE.md`)
-- [x] Architecture document with trust boundaries (`docs/architecture.md`)
-- [x] All suites pass locally (forge 95, pytest 739 + 64 skipped, vitest 217, tsc clean)
+- [x] Architecture document with trust boundaries (`docs/ARCHITECTURE.md`)
+- [x] All suites pass locally (forge 95, pytest 770 + 73 skipped, vitest 230, tsc clean, production build)
 - [x] SYNTHETIC data labelled in the app and in the docs
 - [x] Testnet status stated as pending everywhere
 - [x] No secrets tracked

@@ -6,6 +6,26 @@ Base Sepolia deployment and testnet acceptance are **pending** and are not part 
 
 Timing: about 10 minutes, plus 2 minutes of waiting for each challenge window.
 
+## Five-minute presentation
+
+Before you start: the stack is running (section 0), MetaMask is on **Anvil Local** with the attester account
+(section 0, "MetaMask on Anvil"), and `make watcher` is running in a terminal.
+
+| Time | Do | Say / expected on screen |
+|---|---|---|
+| 0:00 | Open http://localhost:3000/dashboard | "Protocols act on AI risk analysis nobody can check. StressProof makes every claim bonded and replayable." The dashboard reads the chain live: claims, max LTV (50% after claim #1), circuit breaker, latest bad debt. The amber badge says the dataset is SYNTHETIC |
+| 0:45 | Sidebar → **STRESS_SIMULATION**, click **RUN_STRESS_SIMULATION** | 4 liquidatable accounts, debt at risk $33,743.00, liquidation volume $31,743.00, residual bad debt **$2,000.00**, plus an evidence hash. "Integer-only replay: same inputs, same bytes, same hash." |
+| 1:30 | Click **PUBLISH_BONDED_CLAIM** and confirm in MetaMask | "CLAIM_POSTED_ON_CHAIN" with the tx hash and claim id. "The attester stakes 0.01 ETH on this number." |
+| 2:00 | Open the claim (**VIEW_CLAIM_DOSSIER**) | The browser re-hashes the case file: **KECCAK256 INTEGRITY VERIFIED**. "Anyone can check the evidence; it is content-addressed." |
+| 2:30 | In a terminal: `make evil` | A dishonest attester posts an inflated claim. On its next poll, `make watcher` fetches the case file, replays it and challenges. On `/claims` the new claim turns **CHALLENGED** |
+| 3:15 | `uv run -m stressproof_agents.resolver.cli resolve <id>` (dry run), then again with `--send` and type `UPHOLD <id>` when asked | The resolver replays the file and prints the decision: **UPHOLD the challenge**. The challenger wins both bonds. "The verdict is the deterministic replay, not a vote." |
+| 3:45 | Sidebar → **CIRCUIT_BREAKER** (`/vault`), click **EXECUTE_BORROW_SIMULATION** (70% LTV) | `REVERT: LtvTooHigh(7000, 5000)`. "A finalized claim lowered max LTV from 80% to 50% on chain; the lending market enforces it." |
+| 4:15 | Sidebar → **EXPOSURE_GRAPH** | Accounts, assets, market, case file and claims from the replay. Click an account: every value is tagged with its source. "Per-account outputs reproduce every committed total." The TigerGraph panel says **TIGERGRAPH UNAVAILABLE**: the schema exists in Savanna, but data loading is pending |
+| 4:45 | Close | "Bonded claims, deterministic replay, on-chain enforcement. Local Anvil today; Base Sepolia deployment is pending." |
+
+If the `make evil` path fails, use the UI path in section 6 instead: challenge from `/claims` with a second
+account.
+
 ## 0. Start the stack
 
 Terminal 1, the chain. Skip this if Anvil is already running on 8546 with the demo state.
@@ -109,11 +129,18 @@ On `/stress`, connect MetaMask (attester account, Anvil Local) and click **PUBLI
 
 On `/claims` and `/claims/[id]`:
 
-- **Challenge:** switch MetaMask to another account and open the claim. Choose `WRONG_RESULT` with a counter
-  value, or `EVIDENCE_INVALID`, and confirm (0.01 ETH bond). The action is simulated before signing, so a
+- **Challenge (agents, recommended):** with `make watcher` running, `make evil` posts an inflated claim. The
+  watcher replays it, uploads a replay report and challenges automatically.
+- **Challenge (UI):** switch MetaMask to another account and click **CHALLENGE** on a Pending claim in
+  `/claims`. Choose `WRONG_RESULT` with a counter value, or `EVIDENCE_INVALID`. Give a replay-report URL
+  (`http://127.0.0.1:8000/replay-reports/0x…`, for example one the watcher uploaded) and confirm (0.01 ETH bond).
+  You must do this within 120 s of publishing. The action is simulated before signing, so a
   predictable revert (window closed, counter equal to the claim, attester challenging their own claim) is explained instead of sent.
-- **Resolve:** the designated resolver settles a dispute from the CLI with `make resolve ID=<id>`, which
-  replays the case file and submits the deterministic verdict.
+- **Resolve:** the designated resolver settles a dispute from the command line.
+  `uv run -m stressproof_agents.resolver.cli resolve <id>` is a dry run that prints the replay and the
+  decision. Add `--send` to submit it; it asks you to type `UPHOLD <id>` or `REJECT <id>` (`--yes` skips that). `make resolve ID=<id>` runs the dry run. If the claim was right, the
+  challenge is rejected and the attester wins 2× bond, and the claim shows **FINALIZED**. If it was wrong, the
+  challenge is upheld and the claim shows **REJECTED**.
 - **Finalize:** after 120 s with no challenge, **FINALIZE** (any account).
 - **Expire:** a challenged claim the resolver did not settle within 300 s can be expired; both bonds are
   refunded.
@@ -145,6 +172,8 @@ each labelled with its source. Chain events are authoritative; agent entries are
 - The outcome filter (bad debt: synth-0002 and synth-0006), search, zoom and pan.
 - "Per-account outputs reproduce every committed total."
 - The graph informs only; it never affects a verdict.
+- Below the graph, the TigerGraph panel shows **TIGERGRAPH UNAVAILABLE**. The schema exists in Savanna, but
+  CSV loading is pending, so no live TigerGraph data is connected. Say so; the graph above is local replay.
 
 ## 10. Wallet errors and wrong-network protection
 
@@ -152,6 +181,33 @@ each labelled with its source. Chain events are authoritative; agent entries are
   and the banner offers to switch back to Anvil Local.
 - Reject a signature in MetaMask: the page shows "rejected", and nothing is sent.
 - Disconnect: write buttons are disabled, and read-only data stays visible.
+
+## Rehearse without losing the demo state
+
+```bash
+cast rpc evm_snapshot --rpc-url http://127.0.0.1:8546      # prints an id, e.g. "0x15"
+# ... rehearse: publish, challenge, resolve, apply ...
+cast rpc evm_revert 0x15 --rpc-url http://127.0.0.1:8546   # back to exactly where you were
+```
+
+## What was verified (2026-10-30)
+
+These were exercised through the real UI on local Anvil with an **injected test wallet** backed by Anvil's
+dev accounts, then reverted with `evm_revert`. This was **not** the MetaMask extension.
+
+- Stress run and publish (claim #4, evidence hash and tx hash shown).
+- In-browser keccak verification.
+- Apply refused for a Pending claim (`NotFinalized`, nothing sent).
+- Finalize after the window.
+- UI challenge (claim #5), resolved with the resolver tool (challenge rejected, attester credited 0.02 ETH).
+- Withdraw (credits 0.05 → 0 ETH, balance up by the same amount minus gas).
+- Wallet rejection ("Nothing was sent").
+- Wrong network: banner shown, write refused, no block mined.
+- Apply finalized claim to the vault.
+- Borrow at 40% and 50% passes; 51% reverts `LtvTooHigh(5100, 5000)`.
+
+Not re-run in this session: `make evil` + watcher (covered by the GATE-24 local run, 101/101), the expire
+path (covered by GATE-24 and the earlier WP-13 check), and the MetaMask extension (owner's manual check).
 
 ## If something breaks
 
@@ -161,3 +217,7 @@ each labelled with its source. Chain events are authoritative; agent entries are
 | Case file 404 for an old claim | The backend `data/` directory was reset; re-run the stress simulation |
 | MetaMask "nonce too high" | Clear activity tab data for the account (see above) |
 | Backend 401/403 on publish | `API_WRITE_TOKEN` in `frontend/.env` must match the backend's `.env` |
+| Sidebar shows **BACKEND OFFLINE** | Restart it: `make backend` (port 8000) |
+| Frontend blank or not loading | `cd frontend && npm run dev`; if port 3000 is taken, stop the old process first |
+| Anvil stopped | `make chain`, then restore the saved state (above) or run `make deploy-local` on the fresh chain |
+| A challenge reverted "window closed" | The 120 s window passed; publish a new claim and challenge sooner |

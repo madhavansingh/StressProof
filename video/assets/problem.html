@@ -1,0 +1,93 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Problem</title><link rel="stylesheet" href="style.css">
+<style>
+  .wrap { position: absolute; inset: 70px 110px; }
+  h1 { font-size: 64px; font-weight: 800; letter-spacing: -.01em; }
+  .sub { margin-top: 10px; font-size: 22px; color: var(--muted); }
+  .chart { position: absolute; left: 0; top: 190px; width: 1060px; height: 520px; border: 2px solid var(--line); background: rgba(20,20,20,.85); }
+  .chart .lbl { position: absolute; left: 22px; top: 16px; font-size: 18px; color: var(--muted); letter-spacing: .12em; }
+  .price { position: absolute; right: 24px; top: 14px; font-size: 44px; font-weight: 800; }
+  .delta { position: absolute; right: 24px; top: 70px; font-size: 24px; color: var(--bad); opacity: 0; }
+  svg { position: absolute; left: 0; top: 0; }
+  .accts { position: absolute; left: 1110px; top: 190px; width: 590px; }
+  .acct { display: flex; align-items: center; gap: 16px; border: 2px solid var(--line); background: rgba(20,20,20,.85);
+          padding: 14px 18px; margin-bottom: 12px; font-size: 20px; transition: border-color .4s, background .4s; }
+  .acct .id { width: 150px; }
+  .bar { flex: 1; height: 12px; background: #262626; position: relative; }
+  .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--ok); transition: width .6s, background .6s; }
+  .acct .st { width: 150px; text-align: right; font-size: 16px; color: var(--muted); transition: color .4s; }
+  .acct.liq { border-color: var(--warn); } .acct.liq .st { color: var(--warn); }
+  .acct.bad { border-color: var(--bad); background: rgba(239,68,68,.08); } .acct.bad .st { color: var(--bad); }
+  .debt { position: absolute; left: 0; top: 740px; width: 1060px; display: flex; justify-content: space-between; align-items: baseline;
+          border: 2px solid var(--bad); padding: 18px 24px; background: rgba(239,68,68,.07); opacity: 0; transition: opacity .6s; }
+  .debt b { font-size: 46px; color: var(--bad); }
+  .note { position: absolute; left: 0; bottom: -10px; font-size: 16px; color: var(--muted); }
+  .q { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 34px;
+       background: rgba(11,11,11,.93); opacity: 0; transition: opacity 1s; }
+  .doc { width: 460px; border: 2px solid var(--line); background: var(--card); padding: 26px; position: relative; font-size: 19px; line-height: 2; color: var(--muted); }
+  .doc .stamp { position: absolute; right: -40px; top: -40px; width: 120px; height: 120px; border: 4px solid var(--accent); color: var(--accent);
+                font-size: 84px; font-weight: 800; display: flex; align-items: center; justify-content: center; transform: rotate(12deg) scale(0); transition: transform .5s cubic-bezier(.3,1.6,.5,1); }
+  .q h2 { font-size: 52px; text-align: center; line-height: 1.25; max-width: 1400px; }
+</style></head>
+<body>
+<div class="wrap">
+  <div class="tag">// THE PROBLEM</div>
+  <h1 style="margin-top:18px">When collateral collapses, <span class="accent">bad debt</span> follows.</h1>
+  <div class="chart">
+    <div class="lbl">WETH COLLATERAL PRICE · SHOCK −30%</div>
+    <div class="price" id="price">$3,000</div>
+    <div class="delta" id="delta">−30.00%</div>
+    <svg width="1060" height="520" viewBox="0 0 1060 520">
+      <polyline id="line" fill="none" stroke="#ea580c" stroke-width="5" stroke-linejoin="round" points=""/>
+      <line x1="40" y1="420" x2="1020" y2="420" stroke="#3a3a3a" stroke-dasharray="6 6"/>
+      <text x="44" y="412" fill="#9a958c" font-size="16" font-family="JetBrains Mono">LIQUIDATION THRESHOLD ZONE</text>
+    </svg>
+  </div>
+  <div class="accts" id="accts"></div>
+  <div class="debt" id="debt"><span style="font-size:22px">RESIDUAL BAD DEBT</span><b id="debtv">$0.00</b></div>
+  <div class="note">Illustration using the project's SYNTHETIC fixture figures (weth-stable-fixture-v1): 6 accounts, 4 liquidatable, $2,000.00 residual bad debt.</div>
+</div>
+<div class="q" id="q">
+  <div class="doc"><div class="stamp" id="stamp">?</div>STRESS-TEST REPORT<br>Scenario: WETH −30%<br>Bad debt: $ ?<br>Source: closed model</div>
+  <h2>How can protocols <span class="accent">trust</span> the stress-test reports<br>behind critical risk decisions?</h2>
+</div>
+<script>
+const accts = [
+  ["synth-0001", 0.71, "liq"], ["synth-0002", 0.95, "bad"], ["synth-0003", 0.40, "ok"],
+  ["synth-0004", 0.69, "ok"], ["synth-0005", 0.70, "liq"], ["synth-0006", 1.0, "bad"]];
+const box = document.getElementById("accts");
+accts.forEach(([id]) => box.insertAdjacentHTML("beforeend",
+  `<div class="acct" id="a-${id}"><span class="id">${id}</span><span class="bar"><i style="width:30%"></i></span><span class="st">HEALTHY</span></div>`));
+const pts = []; for (let i = 0; i <= 60; i++) pts.push(i);
+function priceAt(k) { return 3000 - 900 * (1 - Math.pow(1 - k, 2.2)); }
+function draw(k) {
+  const n = Math.max(2, Math.floor(60 * k));
+  const p = pts.slice(0, n + 1).map(i => { const kk = i / 60; const pr = priceAt(Math.min(1, kk)) + Math.sin(i * 1.7) * 18;
+    return `${40 + i * 16.3},${120 + (3000 - pr) / 900 * 300}`; }).join(" ");
+  document.getElementById("line").setAttribute("points", p);
+  document.getElementById("price").textContent = "$" + Math.round(priceAt(k)).toLocaleString("en-US");
+}
+function money(v) { return "$" + v.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+window.__start = () => {
+  const t0 = performance.now();
+  const tick = now => {
+    const t = (now - t0) / 1000;
+    draw(Math.min(1, t / 6.5));
+    if (t > 6.5) document.getElementById("delta").style.opacity = 1;
+    accts.forEach(([id, risk, fate], i) => {
+      const el = document.getElementById("a-" + id), bar = el.querySelector("i"), st = el.querySelector(".st");
+      bar.style.width = (30 + Math.min(1, t / 6.5) * risk * 70) + "%";
+      if (t > 7.5 + i * 0.9 && fate !== "ok") {
+        el.className = "acct " + fate; bar.style.background = fate === "bad" ? "#ef4444" : "#fbbf24";
+        st.textContent = fate === "bad" ? "BAD DEBT" : "LIQUIDATED";
+      }
+    });
+    if (t > 9.5) { document.getElementById("debt").style.opacity = 1;
+      const k = Math.min(1, (t - 9.5) / 4); document.getElementById("debtv").textContent = money(2000 * k); }
+    if (t > 16.2) { document.getElementById("q").style.opacity = 1; }
+    if (t > 17.4) { document.getElementById("stamp").style.transform = "rotate(12deg) scale(1)"; }
+    if (t < 40) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+};
+</script></body></html>

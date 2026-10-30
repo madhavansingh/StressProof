@@ -10,7 +10,7 @@ from functools import cached_property
 from pathlib import Path
 from typing import List
 
-from pydantic import SecretStr
+from pydantic import AliasChoices, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -53,8 +53,8 @@ class Settings(BaseSettings):
     DATABASE_POOL_MAX: int = 5
     # TigerGraph (WP-2..5). Backend-only; never sent to the browser. Unset TG_HOST: /graph/exposure answers 503.
     TG_HOST: str = ""                      # e.g. https://<workspace-id>.i.tgcloud.io (no path)
-    TG_GRAPH: str = "StressProof"
-    TG_SECRET: SecretStr = SecretStr("")    # exchanged for a REST++ token
+    TG_GRAPH: str = Field("StressProof", validation_alias=AliasChoices("TG_GRAPHNAME", "TG_GRAPH"))
+    TG_SECRET: SecretStr = SecretStr("")    # database secret: sent as "Authorization: GSQL-Secret <secret>"
     TG_TOKEN: SecretStr = SecretStr("")     # or a token minted beforehand
     TG_USERNAME: str = ""                  # GSQL user for schema/query setup (setup CLI only)
     TG_PASSWORD: SecretStr = SecretStr("")

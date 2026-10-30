@@ -2,8 +2,10 @@
 Minimal TigerGraph REST client (httpx, no extra dependency).
 
 Endpoints (TigerGraph Savanna, HTTPS on 443):
-- REST++ under /restpp: /requesttoken, /echo, /graph/<g> (upsert), /graph/<g>/vertices/<type>, /query/<g>/<q>.
-- GSQL 4.x under /gsql/v1: /tokens (token from secret), /statements (run GSQL text).
+- REST++ under /restpp: /echo, /graph/<g> (upsert), /graph/<g>/vertices/<type>, /query/<g>/<q>.
+- GSQL 4.x under /gsql/v1: /schema/graphs/<g> (read schema), /statements (run GSQL text), /tokens.
+Auth: the database secret is sent as "Authorization: GSQL-Secret <secret>". If that is refused (401/403), a
+REST++ token is minted from the same secret and used as a Bearer token. TG_TOKEN skips both.
 Secrets are never logged or included in error messages.
 """
 
@@ -21,10 +23,22 @@ GRAPH_NAME = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,63}$")
 QUERY_NAME = GRAPH_NAME
 
 
+EXPECTED_VERTEX_TYPES = frozenset({"SP_Dataset", "SP_Market", "SP_Asset", "SP_Account", "SP_CaseFile"})
+EXPECTED_EDGE_TYPES = frozenset({"SP_INCLUDED_IN", "SP_COLLATERAL_IN", "SP_BORROWS", "SP_LISTS", "SP_REPLAYS", "SP_OUTCOME"})
+
+
 class TigerGraphError(RuntimeError):
     def __init__(self, message: str, status: Optional[int] = None):
         super().__init__(message)
         self.status = status
+
+
+def _network_error(exc: httpx.HTTPError, host: str) -> TigerGraphError:
+    text = str(exc).lower()
+    if any(s in text for s in ("nodename nor servname", "name or service not known", "getaddrinfo", "no address")):
+        return TigerGraphError(f"TG_HOST does not resolve in DNS ({host}); copy the endpoint from the Savanna "
+                               "workspace (Connect > Connect from API)")
+    return TigerGraphError(f"cannot reach TigerGraph at {host}: {type(exc).__name__}")
 
 
 @dataclass(frozen=True)
@@ -109,7 +123,7 @@ class TigerGraphClient:
             try:
                 res = self._http.post(path, json=payload)
             except httpx.HTTPError as exc:
-                raise TigerGraphError(f"cannot reach TigerGraph: {type(exc).__name__}") from exc
+                raise _network_error(exc, self.config.public_host) from exc
             if res.status_code in (404, 405):
                 failures.append(f"{path}: HTTP {res.status_code}")
                 continue
@@ -122,13 +136,22 @@ class TigerGraphClient:
         raise TigerGraphError("could not get a token from TG_SECRET (" + "; ".join(failures) + ")", 401)
 
     def _auth(self) -> Dict[str, str]:
-        return {"Authorization": f"Bearer {self.token()}"}
+        if self._token:
+            return {"Authorization": f"Bearer {self._token}"}
+        return {"Authorization": f"GSQL-Secret {self.config.secret}"}
 
-    def _request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+    def _send(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
         try:
             res = self._http.request(method, path, headers=self._auth(), **kwargs)
+            if res.status_code in (401, 403) and not self._token and self.config.secret:
+                self.token()  # GSQL-Secret refused: fall back to a token minted from the secret
+                res = self._http.request(method, path, headers=self._auth(), **kwargs)
         except httpx.HTTPError as exc:
-            raise TigerGraphError(f"cannot reach TigerGraph: {type(exc).__name__}") from exc
+            raise _network_error(exc, self.config.public_host) from exc
+        return res
+
+    def _request(self, method: str, path: str, **kwargs: Any) -> Dict[str, Any]:
+        res = self._send(method, path, **kwargs)
         body = _json(res)
         if res.status_code >= 400 or body.get("error") is True:
             raise TigerGraphError(f"{method} {path.split('?')[0]}: HTTP {res.status_code} {_error_text(body)}",
@@ -159,6 +182,39 @@ class TigerGraphClient:
         body = self._request("GET", f"/restpp/query/{self.config.graph}/{name}", params=dict(params))
         return list(body.get("results") or [])
 
+    # --- read-only checks ---------------------------------------------------------------------------
+
+    def schema(self) -> Dict[str, Any]:
+        """Vertex and edge type names of the graph (read-only). 4.x route first, then the 3.x route."""
+        for path, params in ((f"/gsql/v1/schema/graphs/{self.config.graph}", None),
+                             ("/gsqlserver/gsql/schema", {"graph": self.config.graph})):
+            res = self._send("GET", path, params=params)
+            if res.status_code == 404:
+                continue
+            body = _json(res)
+            if res.status_code >= 400 or body.get("error") is True:
+                raise TigerGraphError(f"GET schema: HTTP {res.status_code} {_error_text(body)}", res.status_code)
+            results = body.get("results") or {}
+            return {"graph": results.get("GraphName", self.config.graph),
+                    "vertexTypes": sorted(v.get("Name", "") for v in results.get("VertexTypes") or []),
+                    "edgeTypes": sorted(e.get("Name", "") for e in results.get("EdgeTypes") or [])}
+        raise TigerGraphError("no schema endpoint answered (HTTP 404 on both routes)", 404)
+
+    def health(self) -> Dict[str, Any]:
+        """Reachability, authentication and schema check. Read-only; raises TigerGraphError on failure."""
+        schema = self.schema()
+        vertices, edges = set(schema["vertexTypes"]), set(schema["edgeTypes"])
+        return {
+            "status": "connected",
+            "host": self.config.public_host,
+            "graph": schema["graph"],
+            "vertexTypes": schema["vertexTypes"],
+            "edgeTypes": schema["edgeTypes"],
+            "schemaMatches": vertices == EXPECTED_VERTEX_TYPES and edges == EXPECTED_EDGE_TYPES,
+            "missing": sorted((EXPECTED_VERTEX_TYPES - vertices) | (EXPECTED_EDGE_TYPES - edges)),
+            "unexpected": sorted((vertices - EXPECTED_VERTEX_TYPES) | (edges - EXPECTED_EDGE_TYPES)),
+        }
+
     # --- GSQL (setup only) ----------------------------------------------------------------------
 
     def gsql(self, statements: str) -> str:
@@ -172,7 +228,7 @@ class TigerGraphClient:
             res = self._http.post("/gsql/v1/statements", content=statements.encode("utf-8"),
                                   headers=headers, auth=auth, timeout=max(self.config.timeout, 600.0))
         except httpx.HTTPError as exc:
-            raise TigerGraphError(f"cannot reach TigerGraph GSQL: {type(exc).__name__}") from exc
+            raise _network_error(exc, self.config.public_host) from exc
         if res.status_code >= 400:
             raise TigerGraphError(f"GSQL statements: HTTP {res.status_code} {res.text[:300]}", res.status_code)
         return res.text

@@ -45,6 +45,7 @@ function DataClassBanner({ dataClass }: { dataClass: string }) {
 
 function SourceBar({ graph, scenario, model, outputBytes }: { graph: ExposureGraph; scenario: string; model: string; outputBytes: number }) {
   const items: Array<[string, string]> = [
+    ["Graph source", "Local deterministic replay · not TigerGraph"],
     ["Evidence hash", graph.evidenceHash],
     ["Case file", "keccak256 verified"],
     ["Replay outputs", `${graph.nodes.filter((n) => n.kind === "account").length} rows · ${outputBytes} bytes · derived, not on chain`],
@@ -52,7 +53,7 @@ function SourceBar({ graph, scenario, model, outputBytes }: { graph: ExposureGra
     ["Model", model],
   ];
   return (
-    <dl className="bg-card border-2 border-border p-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-2 xl:grid-cols-5 text-[11px]">
+    <dl className="bg-card border-2 border-border p-3 grid gap-x-4 gap-y-1.5 sm:grid-cols-2 xl:grid-cols-3 text-[11px]">
       {items.map(([k, v]) => (
         <div key={k} className="min-w-0">
           <dt className="text-[10px] uppercase text-muted-foreground flex items-center gap-1">

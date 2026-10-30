@@ -350,7 +350,7 @@ export function LandingPage() {
               <span>&bull;</span>
               <span>[FORK_BLOCK: #19,000,000]</span>
               <span>&bull;</span>
-              <span>[ORACLE_INDEX: $3,000.00 WETH]</span>
+              <span>[SNAPSHOT_PRICE: $3,000.00 WETH]</span>
               <span>&bull;</span>
               <span>[CLAIMED_BAD_DEBT: $2,000.00 USD8]</span>
               <span>&bull;</span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -15,7 +15,38 @@ import {
   Cpu,
   Layers,
   ArrowLeft,
+  Waypoints,
 } from "lucide-react";
+import { BACKEND_URL } from "@/lib/api/client";
+
+const HEALTH_POLL_MS = 15_000;
+
+type BackendStatus = "checking" | "online" | "offline";
+
+/** Polls the backend /health endpoint so the sidebar status is real, not a fixed "ONLINE". */
+function useBackendStatus(): BackendStatus {
+  const [status, setStatus] = useState<BackendStatus>("checking");
+  useEffect(() => {
+    let active = true;
+    const check = async () => {
+      try {
+        const res = await fetch(`${BACKEND_URL}/health`, { cache: "no-store" });
+        const body: unknown = await res.json().catch(() => null);
+        const ok = res.ok && !!body && typeof body === "object" && (body as { ok?: unknown }).ok === true;
+        if (active) setStatus(ok ? "online" : "offline");
+      } catch {
+        if (active) setStatus("offline");
+      }
+    };
+    void check();
+    const timer = setInterval(check, HEALTH_POLL_MS);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, []);
+  return status;
+}
 
 export function PortalSidebar() {
   const pathname = usePathname();
@@ -57,7 +88,15 @@ export function PortalSidebar() {
       tag: "005",
       badge: "STREAM",
     },
+    {
+      label: "EXPOSURE_GRAPH",
+      href: "/graph",
+      icon: Waypoints,
+      tag: "006",
+      badge: "REPLAY",
+    },
   ];
+  const backendStatus = useBackendStatus();
 
   return (
     <>
@@ -123,7 +162,7 @@ export function PortalSidebar() {
             <span className="text-[10px] uppercase tracking-widest text-muted-foreground">
               {"// NAVIGATION"}
             </span>
-            <span className="text-[10px] text-[#ea580c] font-bold">5 NODES</span>
+            <span className="text-[10px] text-[#ea580c] font-bold">{navItems.length} PAGES</span>
           </div>
 
           {/* Navigation Links */}
@@ -169,10 +208,13 @@ export function PortalSidebar() {
         <div className="p-4 border-t-2 border-border bg-card space-y-3 shrink-0">
           <div className="border border-border p-3 space-y-2 bg-background/50">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase">
-              <span>SYSTEM_STATUS</span>
-              <span className="text-emerald-400 font-bold flex items-center gap-1">
-                <span className="h-1.5 w-1.5 bg-emerald-400 animate-pulse" />
-                ONLINE
+              <span>BACKEND</span>
+              <span
+                role="status"
+                className={`font-bold flex items-center gap-1 ${backendStatus === "online" ? "text-emerald-400" : backendStatus === "offline" ? "text-red-400" : "text-muted-foreground"}`}
+              >
+                <span className={`h-1.5 w-1.5 ${backendStatus === "online" ? "bg-emerald-400" : backendStatus === "offline" ? "bg-red-400" : "bg-muted-foreground"}`} />
+                {backendStatus === "online" ? "ONLINE" : backendStatus === "offline" ? "OFFLINE" : "CHECKING"}
               </span>
             </div>
             <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase">
@@ -180,8 +222,12 @@ export function PortalSidebar() {
               <span className="text-foreground font-mono">#19,000,000</span>
             </div>
             <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase">
-              <span>ORACLE_INDEX</span>
+              <span title="WETH price in the SYNTHETIC fixture snapshot; not a live oracle">SNAPSHOT_PRICE</span>
               <span className="text-[#ea580c] font-mono font-bold">$3,000.00</span>
+            </div>
+            <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase">
+              <span>DATASET</span>
+              <span className="text-amber-400 font-mono font-bold">SYNTHETIC</span>
             </div>
           </div>
 

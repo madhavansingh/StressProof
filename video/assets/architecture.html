@@ -1,0 +1,50 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Architecture</title><link rel="stylesheet" href="style.css">
+<style>
+  .wrap { position: absolute; inset: 70px 90px; }
+  h1 { font-size: 60px; font-weight: 800; margin-top: 18px; }
+  .flow { position: absolute; top: 300px; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; }
+  .node { width: 200px; height: 200px; border: 3px solid var(--line); background: rgba(20,20,20,.9); display: flex; flex-direction: column;
+          align-items: center; justify-content: center; gap: 14px; text-align: center; opacity: .18; transform: translateY(14px);
+          transition: opacity .6s, transform .6s, border-color .6s, box-shadow .6s; }
+  .node.on { opacity: 1; transform: none; border-color: var(--accent); box-shadow: 0 0 40px rgba(234,88,12,.25); }
+  .node .ico { font-size: 54px; }
+  .node .t { font-size: 19px; font-weight: 800; letter-spacing: .06em; }
+  .node .d { font-size: 14px; color: var(--muted); padding: 0 10px; line-height: 1.35; }
+  .arrow { flex: 1; height: 3px; background: var(--line); position: relative; margin: 0 6px; overflow: hidden; }
+  .arrow i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--accent); transition: width .7s ease; }
+  .arrow.on i { width: 100%; }
+  .caps { position: absolute; top: 620px; left: 0; right: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; }
+  .cap { border: 2px solid var(--line); padding: 24px; background: rgba(20,20,20,.85); opacity: 0; }
+  .cap.on { animation: rise .7s ease forwards; }
+  .cap b { display: block; font-size: 24px; margin-bottom: 10px; }
+  .cap span { font-size: 18px; color: var(--muted); line-height: 1.5; }
+  .bond { color: var(--warn); } .ok { color: var(--ok); }
+</style></head>
+<body>
+<div class="wrap">
+  <div class="tag">// THE SOLUTION</div>
+  <h1>Deterministic, <span class="accent">evidence-backed</span> stress testing</h1>
+  <div class="flow" id="flow"></div>
+  <div class="caps">
+    <div class="cap" id="c1"><b class="bond">0.01 ETH bond</b><span>Attesters stake on every risk claim they publish.</span></div>
+    <div class="cap" id="c2"><b class="accent">120 s challenge window</b><span>Independent watchers replay the evidence and challenge wrong results.</span></div>
+    <div class="cap" id="c3"><b class="ok">Replay decides</b><span>The resolver re-runs the deterministic replay; only finalized claims change vault controls.</span></div>
+  </div>
+</div>
+<script>
+const nodes = [
+  ["◉", "ATTESTER", "proposes a scenario"], ["⚙", "STRESS SIM", "integer-only replay"], ["#", "EVIDENCE HASH", "keccak-256 of case file"],
+  ["⛓", "BONDED CLAIM", "on-chain, 0.01 ETH"], ["⚑", "WATCHER", "replays · challenges"], ["⚖", "RESOLVER", "deterministic verdict"],
+  ["🛡", "VAULT", "max LTV 80% → 50%"]];
+const flow = document.getElementById("flow");
+nodes.forEach(([ico, t, d], i) => {
+  if (i) flow.insertAdjacentHTML("beforeend", `<div class="arrow" id="ar${i}"><i></i></div>`);
+  flow.insertAdjacentHTML("beforeend", `<div class="node" id="n${i}"><div class="ico">${ico}</div><div class="t">${t}</div><div class="d">${d}</div></div>`);
+});
+window.__start = () => {
+  const plan = [[0.6, "n0"], [1.6, "ar1"], [2.2, "n1"], [3.2, "ar2"], [3.8, "n2"], [4.8, "ar3"], [5.4, "n3"], [5.6, "c1"],
+                [9.6, "ar4"], [10.2, "n4"], [10.4, "c2"], [13.6, "ar5"], [14.2, "n5"], [15.2, "ar6"], [15.8, "n6"], [16.0, "c3"]];
+  plan.forEach(([t, id]) => setTimeout(() => document.getElementById(id).classList.add("on"), t * 1000));
+};
+</script></body></html>

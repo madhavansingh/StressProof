@@ -128,3 +128,18 @@ export function claimActions(
     expire: claim.stateName === "Challenged" && claim.resolutionDeadline > 0n && now >= claim.resolutionDeadline,
   };
 }
+
+/**
+ * The chain's "now" for deciding which claim actions are possible. A local Anvil chain mines only when a
+ * transaction arrives, so its latest block time can lag the wall clock by minutes, while the next block is
+ * stamped with the wall clock. Using the later of the two keeps windows from looking open after they closed.
+ * The contract stays the authority: every write is still simulated and checked on chain.
+ */
+export function chainNowSec(latestBlockSec: number, wallNowSec: number): number {
+  return Math.max(Math.floor(latestBlockSec), Math.floor(wallNowSec));
+}
+
+/** Timestamp the next block will carry: at least one second after the latest block. */
+export function nextBlockTimeSec(latestBlockSec: number, wallNowSec: number): number {
+  return Math.max(Math.floor(latestBlockSec) + 1, Math.floor(wallNowSec));
+}

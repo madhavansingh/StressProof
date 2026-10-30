@@ -125,7 +125,7 @@ Before merging anything that touches `agents/`, `core/`, `contracts/` or `backen
 - **Tests:** backend route tests (available and unavailable); frontend unit test for the label.
 - **Security:** no addresses beyond what the snapshot already exposes; labels kept.
 
-**WP-2 to WP-5 status (2026-10-30): IMPLEMENTED, LIVE TIGERGRAPH CONNECTION NOT YET VERIFIED.**
+**WP-2 to WP-5 status (2026-10-30, frozen for submission): schema created in Savanna by the project owner (5 vertex types, 6 edge types); CSV data loading PENDING; no live TigerGraph data connected.**
 Schema `tigergraph/schema.gsql`, read-only query `tigergraph/queries/sp_exposure.gsql`, SYNTHETIC CSVs in
 `tigergraph/data/` (11 vertices, 27 edges, generated from the golden fixture with the core replayer), REST client,
 idempotent loader and fail-loud reconciler, and setup CLI in `backend/src/stressproof_backend/tigergraph/`.

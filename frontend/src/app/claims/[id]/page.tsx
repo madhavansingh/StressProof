@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAccount, usePublicClient, useWriteContract } from "wagmi";
 import { useTxReceipt } from "@/lib/web3/useTxReceipt";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
-import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown } from "@/lib/claims";
+import { parseClaimStruct, OnChainClaim, calculateBlockTimeCountdown, chainNowSec } from "@/lib/claims";
 import { verifyEvidenceUri, VerificationResult, resolveUri } from "@/lib/validation/verify";
 import { decodeContractError } from "@/lib/web3/errors";
 import { txPhase, txPhaseLabel } from "@/lib/web3/txStatus";
@@ -46,6 +46,12 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
   // On-chain claim state
   const [claim, setClaim] = useState<OnChainClaim | null>(null);
   const [blockTimestamp, setBlockTimestamp] = useState<number>(0);
+  const [, setTick] = useState(0);
+  // Re-render every second so the challenge countdown moves between chain reads.
+  useEffect(() => {
+    const timer = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
   const [isLoadingClaim, setIsLoadingClaim] = useState<boolean>(true);
   const [claimError, setClaimError] = useState<string | null>(null);
 
@@ -248,7 +254,7 @@ export default function ClaimDetailPage({ params }: { params: { id: string } }) 
   }
 
   const countdown = claim
-    ? calculateBlockTimeCountdown(claim.challengeDeadline, blockTimestamp, 0)
+    ? calculateBlockTimeCountdown(claim.challengeDeadline, chainNowSec(blockTimestamp, Date.now() / 1000), 0)
     : { text: "—", isExpired: true };
 
   return (

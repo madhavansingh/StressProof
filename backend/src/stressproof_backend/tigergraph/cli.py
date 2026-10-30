@@ -3,7 +3,7 @@ TigerGraph setup and load commands. Credentials come only from the environment (
 printed.
 
     uv run python -m stressproof_backend.tigergraph.cli export      # write tigergraph/data/*.csv (no network)
-    uv run python -m stressproof_backend.tigergraph.cli check       # token + REST++ echo
+    uv run python -m stressproof_backend.tigergraph.cli check       # read-only: auth + schema types
     uv run python -m stressproof_backend.tigergraph.cli schema      # apply tigergraph/schema.gsql
     uv run python -m stressproof_backend.tigergraph.cli install     # create + install sp_exposure
     uv run python -m stressproof_backend.tigergraph.cli load        # idempotent upsert of the fixture
@@ -64,9 +64,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             return 0
         with _client() as client:
             if args.command == "check":
-                client.token()
-                client.echo()
-                print(f"connected: {client.config.public_host} graph={client.config.graph}")
+                report = client.health()  # read-only: schema GET only
+                print(json.dumps(report, indent=2))
+                return 0 if report["schemaMatches"] else 1
             elif args.command in ("schema", "install"):
                 text = (SCHEMA if args.command == "schema" else QUERY).read_text(encoding="utf-8")
                 out = client.gsql(text)
