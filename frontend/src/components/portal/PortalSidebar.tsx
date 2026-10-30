@@ -177,7 +177,7 @@ export function PortalSidebar() {
             </div>
             <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase">
               <span>FORK_BLOCK</span>
-              <span className="text-foreground font-mono">#19,500,000</span>
+              <span className="text-foreground font-mono">#19,000,000</span>
             </div>
             <div className="flex items-center justify-between text-[10px] text-muted-foreground uppercase">
               <span>ORACLE_INDEX</span>

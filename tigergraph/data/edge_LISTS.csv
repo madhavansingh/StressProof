@@ -1,0 +1,3 @@
+from,to
+aave-v3-eth-weth-stable,weth-stable-fixture-v1:WETH
+aave-v3-eth-weth-stable,weth-stable-fixture-v1:STABLE_DEBT

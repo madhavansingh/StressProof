@@ -115,3 +115,12 @@ class ContentStore:
         dest = self._dirs[REPLAY_OUTPUTS] / f"{evidence_hash}.jsonl"
         if not dest.exists():
             atomic_write(dest, raw)
+
+    async def get_replay_outputs(self, evidence_hash: str) -> Optional[bytes]:
+        """Stored per-account outcomes for an evidenceHash, or None (WP-6 graph; read-only)."""
+        if not isinstance(evidence_hash, str) or not HASH_REGEX.match(evidence_hash):
+            return None
+        try:
+            return (self._dirs[REPLAY_OUTPUTS] / f"{evidence_hash}.jsonl").read_bytes()
+        except FileNotFoundError:
+            return None

@@ -1,0 +1,2 @@
+dataset_id,data_class,snapshot_hash,fork_block,network
+weth-stable-fixture-v1,SYNTHETIC,0x9df1899fbcae4e418753920e0d1bee59eed4cb3d0445d982cbc06807838e199d,19000000,ethereum-mainnet-fork

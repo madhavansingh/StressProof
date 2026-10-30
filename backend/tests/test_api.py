@@ -203,6 +203,37 @@ def test_traversal_paths_never_reach_the_store(client, path):
     assert res.status_code in (400, 404) and not res.content.startswith(b"{\"agentRationale\"")
 
 
+# --- replay outputs read route (WP-6) ------------------------------------------------------
+
+def test_replay_outputs_are_served_as_stored_bytes(client, harness):
+    body = client.post("/stress/run", json=RUN, headers=AUTH).json()
+    res = client.get(f"/replay-outputs/{body['evidenceHash']}")
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("application/x-ndjson")
+    assert res.headers["x-evidence-hash"] == body["evidenceHash"]
+    assert "x-content-keccak256" not in res.headers          # the bytes are not hashed to the evidenceHash
+    lines = res.content.splitlines()
+    assert len(lines) == 6
+    assert all(line == canonical_bytes(json.loads(line)) for line in lines)
+    if harness.backend == "filesystem":
+        assert res.content == (harness.data_dir / "replay_outputs" / f"{body['evidenceHash']}.jsonl").read_bytes()
+
+
+@pytest.mark.parametrize("path", ["/replay-outputs/0x123", f"/replay-outputs/{GOLDEN_HASH.upper()}",
+                                  f"/replay-outputs/{GOLDEN_HASH[2:]}", "/replay-outputs/%2e%2e"])
+def test_replay_outputs_bad_hash_400(client, path):
+    assert client.get(path).status_code == 400
+
+
+def test_replay_outputs_missing_404(client):
+    res = client.get("/replay-outputs/0x" + "ab" * 32)
+    assert res.status_code == 404 and res.json()["detail"] == "Replay outputs not found"
+
+
+def test_replay_outputs_route_is_read_only(client):
+    assert client.post("/replay-outputs/0x" + "ab" * 32, content=b"{}", headers=AUTH).status_code == 405
+
+
 def test_missing_file_404(client):
     assert client.get("/case-files/0x" + "ab" * 32).status_code == 404
     assert client.get("/replay-reports/0x" + "ab" * 32).status_code == 404
@@ -290,9 +321,17 @@ def test_cors_only_configured_origins(client):
     assert ok.headers.get("access-control-allow-credentials") is None
 
 
-def test_graph_is_503_stub(client):
-    res = client.get("/graph/exposure")
-    assert res.status_code == 503 and res.json()["label"] == "estimated exposure" and res.json()["nodes"] == []
+def test_graph_exposure_without_tigergraph_is_503_not_mock_data(client):
+    res = client.get(f"/graph/exposure?evidenceHash={GOLDEN_HASH}")
+    body = res.json()
+    assert res.status_code == 503 and body["status"] == "unavailable" and body["nodes"] == []
+    assert "not configured" in body["detail"]
+
+
+@pytest.mark.parametrize("query", ["", "?evidenceHash=0x123", f"?evidenceHash={GOLDEN_HASH.upper()}",
+                                   f"?evidenceHash={GOLDEN_HASH}&top=0", f"?evidenceHash={GOLDEN_HASH}&top=51"])
+def test_graph_exposure_validates_inputs(client, query):
+    assert client.get(f"/graph/exposure{query}").status_code in (400, 422)
 
 
 def test_import_has_no_filesystem_side_effects(tmp_path, monkeypatch):

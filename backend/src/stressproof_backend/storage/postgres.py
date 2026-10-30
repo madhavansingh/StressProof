@@ -144,6 +144,9 @@ class PostgresStore:
                 (REPLAY_OUTPUTS, evidence_hash, raw),
             )
 
+    async def get_replay_outputs(self, evidence_hash: str) -> Optional[bytes]:
+        return await self._get(REPLAY_OUTPUTS, evidence_hash)
+
 
 class PostgresFeed:
     """

@@ -49,6 +49,7 @@ class Harness:
             "GIT_COMMIT": "0" * 40,
             "DATABASE_URL": TEST_DATABASE_URL if self.backend == "postgres" else "",
             "DATABASE_SCHEMA": self.schema,
+            "TG_HOST": "",  # tests never reach a real TigerGraph, even if the shell exports TG_HOST
         }
         values.update(overrides)
         return Settings(_env_file=None, **values)

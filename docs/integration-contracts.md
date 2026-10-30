@@ -146,6 +146,13 @@ Raw canonical case-file bytes. Must pass `validate()` (V-01..V-13), otherwise `4
 (otherwise `422`); **201** new, **200** already stored: `{"reportHash": "0x...", "reportURI": "https://..."}`.
 `GET` returns the exact stored bytes with the same headers as case files; `400` / `404` as above.
 
+### `GET /replay-outputs/{evidenceHash}` (WP-6, read-only)
+Returns the per-account outcomes that `POST /stress/run` stored for that case file (plan §8.5): one canonical
+JSON line per account, `{"collateralValueUsd8","id","liquidatable","repaidUsd8","residualUsd8"}`, as
+`application/x-ndjson` with `X-Evidence-Hash` and an immutable cache header. These bytes are derived data and
+do **not** hash to the evidenceHash, so there is no `X-Content-Keccak256`. `400` malformed hash, `404` when no
+outputs are stored (for example a case file uploaded with `POST /case-files`). There is no write route.
+
 ### `POST /feed` and `GET /feed`
 Append-only log of agent-reported actions (chain events stay authoritative).
 * **POST request:** `{"actor": "watcher", "kind": "REPLAY_MATCH", "claimId": "1", "txHash": null, "data": {...}}`

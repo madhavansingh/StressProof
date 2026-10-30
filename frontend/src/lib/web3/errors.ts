@@ -92,6 +92,27 @@ export function decodeContractError(err: any): DecodedContractError {
         case "WrongBond":
           userMessage = "Bond must be exactly 0.01 ETH";
           break;
+        case "CounterEqualsClaim":
+          userMessage = "CounterEqualsClaim: the counter value equals the claimed value; a WRONG_RESULT challenge must state a different result";
+          break;
+        case "AttesterCannotChallenge":
+          userMessage = "AttesterCannotChallenge: the attester cannot challenge their own claim";
+          break;
+        case "ResolverIsParty":
+          userMessage = "ResolverIsParty: the resolver account cannot post or challenge claims";
+          break;
+        case "NothingToWithdraw":
+          userMessage = "NothingToWithdraw: this account has no credited balance to withdraw";
+          break;
+        case "BadReason":
+          userMessage = "BadReason: the challenge reason must be WRONG_RESULT or EVIDENCE_INVALID";
+          break;
+        case "BadURI":
+          userMessage = "BadURI: the report URI is empty or too long";
+          break;
+        case "ZeroReportHash":
+          userMessage = "ZeroReportHash: the report hash must not be zero";
+          break;
         case "NotOwner":
           userMessage = "Only the vault owner can reset controls";
           break;

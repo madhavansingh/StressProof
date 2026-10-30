@@ -14,6 +14,7 @@ and the agent activity feed. It never touches the chain.
 | `POST /case-files` | Bearer | Raw canonical bytes, must pass `validate()`. 201 new, 200 existing, 413, 422 |
 | `GET /replay-reports/{hash}` | — | Exact stored bytes. 400 / 404 |
 | `POST /replay-reports` | Bearer | Canonical replay report. 201 / 200 / 413 / 422 |
+| `GET /replay-outputs/{evidenceHash}` | — | Per-account outcomes stored by `/stress/run` (JSONL, `application/x-ndjson`, `X-Evidence-Hash`). Derived data, not hashed to the evidenceHash. Read-only. 400 / 404 |
 | `POST /feed` | Bearer | `{actor, kind, claimId?, txHash?, data?}` → `{seq}` |
 | `GET /feed?since=&limit=` | — | `{entries, nextSince}` |
 | `GET /graph/exposure` | — | Phase 2: 503 until the graph exists |

@@ -1,0 +1,38 @@
+// WP-4 exposure query. Read-only: no ACCUM on vertex attributes, no INSERT/UPDATE/DELETE.
+// For one case file, walks SP_CaseFile -(SP_OUTCOME)-> SP_Account and returns the replay outcome totals and the
+// top_n accounts by residual bad debt, then debt. str_to_int is used for ordering and totals only; per-account
+// USD-8 values fit INT64 (§7.2) and the backend re-checks every total against the stored case file with
+// Python big integers. Results never feed a verdict.
+USE GRAPH StressProof
+CREATE OR REPLACE QUERY sp_exposure(STRING ev, INT top_n) FOR GRAPH StressProof {
+  TYPEDEF TUPLE<INT residual_sort, INT debt_sort, STRING account_id, STRING origin, STRING data_class,
+                BOOL liquidatable, STRING debt_usd8, STRING collateral_usd8, STRING collateral_value_usd8,
+                STRING repaid_usd8, STRING residual_usd8> AccountExposure;
+  HeapAccum<AccountExposure>(top_n, residual_sort DESC, debt_sort DESC) @@top;
+  SumAccum<INT> @@accounts, @@liquidatable, @@residual, @@repaid, @@debt_at_risk;
+  SetAccum<STRING> @@data_classes;
+
+  All = {SP_CaseFile.*};
+  Cf = SELECT c FROM All:c WHERE c.evidence_hash == ev;
+  Acc = SELECT a FROM Cf:c -(SP_OUTCOME:o)-> SP_Account:a
+        ACCUM
+          @@accounts += 1,
+          @@data_classes += a.data_class,
+          @@residual += str_to_int(o.residual_usd8),
+          @@repaid += str_to_int(o.repaid_usd8),
+          IF o.liquidatable THEN
+            @@liquidatable += 1,
+            @@debt_at_risk += str_to_int(a.debt_usd8)
+          END,
+          @@top += AccountExposure(str_to_int(o.residual_usd8), str_to_int(a.debt_usd8), a.account_id, a.origin,
+                                   a.data_class, o.liquidatable, a.debt_usd8, a.collateral_usd8,
+                                   o.collateral_value_usd8, o.repaid_usd8, o.residual_usd8);
+
+  PRINT Cf[Cf.evidence_hash, Cf.dataset_id, Cf.market_id, Cf.shock_bps, Cf.model_id, Cf.data_class,
+           Cf.liquidatable_accounts, Cf.residual_bad_debt_usd8, Cf.liquidation_volume_usd8,
+           Cf.debt_at_risk_usd8] AS case_file;
+  PRINT @@accounts AS accounts, @@liquidatable AS liquidatable_accounts, @@residual AS residual_bad_debt_usd8,
+        @@repaid AS liquidation_volume_usd8, @@debt_at_risk AS debt_at_risk_usd8,
+        @@data_classes AS data_classes, @@top AS top_exposures;
+}
+INSTALL QUERY sp_exposure

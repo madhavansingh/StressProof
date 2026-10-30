@@ -104,3 +104,27 @@ export function calculateBlockTimeCountdown(
     remainingSec: remaining,
   };
 }
+
+export interface ClaimActions {
+  challenge: boolean;
+  finalize: boolean;
+  expire: boolean;
+}
+
+/**
+ * Which actions a claim allows at chain time `nowSec`, using the registry's exact boundaries:
+ * challenge while now < challengeDeadline; finalize once now >= challengeDeadline (Pending only);
+ * expireUnresolved once now >= resolutionDeadline (Challenged only).
+ */
+export function claimActions(
+  claim: Pick<OnChainClaim, "stateName" | "challengeDeadline" | "resolutionDeadline">,
+  nowSec: number
+): ClaimActions {
+  const now = BigInt(Math.floor(nowSec));
+  const pending = claim.stateName === "Pending";
+  return {
+    challenge: pending && now < claim.challengeDeadline,
+    finalize: pending && now >= claim.challengeDeadline,
+    expire: claim.stateName === "Challenged" && claim.resolutionDeadline > 0n && now >= claim.resolutionDeadline,
+  };
+}

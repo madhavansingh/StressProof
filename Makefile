@@ -11,7 +11,7 @@ SHELL := /bin/bash
 FORGE ?= forge
 GIT ?= git
 
-.PHONY: help setup test clean fork pin extract normalize sweep chain deploy-local deploy-testnet testnet-preflight abis backend watcher attest evil resolve e2e web
+.PHONY: help setup test clean fork pin extract normalize sweep chain deploy-local deploy-testnet testnet-preflight socket-scan abis backend watcher attest evil resolve e2e web
 
 help: ## Show this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-18s\033[0m %s\n", $$1, $$2}'
@@ -69,6 +69,9 @@ deploy-local: ## Deploy to local Anvil; writes deployments/31337.json from confi
 
 deploy-testnet: ## Deploy to Base Sepolia from .env.testnet; clean tree + key preflight; writes deployments/84532.json from receipts
 	FORGE="$(FORGE)" GIT="$(GIT)" $(SHELL) scripts/deploy.sh testnet
+
+socket-scan: ## Socket supply-chain scan of the npm and uv lockfiles (needs SOCKET_CLI_API_TOKEN; see README)
+	GIT="$(GIT)" $(SHELL) scripts/socket_scan.sh
 
 testnet-preflight: ## Read-only Base Sepolia preflight of .env.testnet (no transactions, keys never printed)
 	GIT="$(GIT)" uv run --no-sync python scripts/testnet_preflight.py --env-file .env.testnet

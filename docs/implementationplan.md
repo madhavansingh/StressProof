@@ -1640,6 +1640,10 @@ Every row of spec 8.3 and 8.4 has at least one test, and every revert has one.
 
 **[GATE] GATE-24:** `e2e_local.sh` passes **and** steps 3 to 7 pass once on the testnet with real windows (no time warp).
 
+> **Amendment (2026-10-30), approved by the sole project owner:** see [`phase2_gate_amendment.md`](phase2_gate_amendment.md).
+> Independent Phase 2 work may start while GATE-24 is pending. The GATE-24 requirement above is **unchanged**.
+> Current statuses: `GATE-24: PENDING TESTNET ACCEPTANCE` · `PHASE 2: CONDITIONAL START APPROVED` · `FINAL RELEASE: BLOCKED UNTIL GATE-24 PASSES`.
+
 ---
 
 ## 22. Deployment and Demo-Day Runbook
@@ -1711,6 +1715,8 @@ Changing the thresholds means redeploying. Bump the deployments file and tell ev
 
 ### 23.1 Ownership
 
+> **Governance update (2026-10-30):** StressProof is now a single-owner project. The sole project owner holds decision authority and overall accountability and works across the whole repository (`CONTRIBUTING.md`, Governance). The table below records the original A/B/C split for history and review focus only.
+
 | Area | Owner | Reviewer |
 |---|---|---|
 | Contracts, deploy, contract tests, invariant | A | B |
@@ -1772,6 +1778,8 @@ This expands spec Section 14. Hours are wall-clock from kickoff.
 7. In-browser hash verification shows green for both case files.
 8. `forge test` and `pytest` are all green.
 
+> **Amendment (2026-10-30), approved by the sole project owner:** [`phase2_gate_amendment.md`](phase2_gate_amendment.md) allows a conditional start for the Phase 2 items it classifies as ALLOWED or CONDITIONAL, while GATE-24 stays pending. The H24 rule and the acceptance criteria above are unchanged, except one owner decision (2026-10-30): under single-owner governance the "all three people watch" requirement in the H24 row is replaced by **observation by the sole project owner** (amendment §8).
+
 ### Phase 2 — Layered features (H24 to H34)
 
 | Hours | Person A | Person B | Person C |
@@ -1797,6 +1805,8 @@ Phase 2 is done when the graph is reconciled with the snapshot, the LLM proposal
 
 These are allowed after `GATE-24`, in priority order: TigerGraph load, reconcile and queries; LLM scenario proposal and rationale; the exposure graph; agent feed polish; the Socket scan. Stretch items come last: Flow voice input, a Dodo Payments checkout narrative, and Cake Wallet.
 
+> **Amendment (2026-10-30), approved by the sole project owner:** the dependency matrix in [`phase2_gate_amendment.md`](phase2_gate_amendment.md) §4 classifies each item above as ALLOWED, CONDITIONAL or BLOCKED; ALLOWED and CONDITIONAL items may start before GATE-24 passes, BLOCKED items may not.
+
 **For every stretch partner item:** read the sponsor's bounty text first. This plan does **not** describe their APIs, because nothing about them was verified. **[UNVERIFIED]** Keep each one isolated so it cannot touch the verdict path.
 
 ---
@@ -1815,6 +1825,8 @@ Spec §15 order, applied at these checkpoints:
 | Any time | — | Cake Wallet, Dodo and Flow go first |
 
 **Never cut:** the spec §0 flow, hash verification before replay, the state machine with correct bond transfers, data-class labelling, the Socket scan.
+
+> **Amendment (2026-10-30), approved by the sole project owner:** under [`phase2_gate_amendment.md`](phase2_gate_amendment.md), the H24 row pauses only Phase 2 items that depend on testnet evidence while GATE-24 is pending; if the testnet run fails, all Phase 2 work pauses as written above.
 
 ---
 

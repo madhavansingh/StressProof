@@ -1,0 +1,7 @@
+vid,account_id,origin,debt_usd8,collateral_amount,collateral_usd8,dataset_id,data_class
+weth-stable-fixture-v1:synth-0001,synth-0001,synthetic,2000000000000,10000000000000000000,3000000000000,weth-stable-fixture-v1,SYNTHETIC
+weth-stable-fixture-v1:synth-0002,synth-0002,synthetic,1200000000000,5000000000000000000,1500000000000,weth-stable-fixture-v1,SYNTHETIC
+weth-stable-fixture-v1:synth-0003,synth-0003,synthetic,1000000000000,10000000000000000000,3000000000000,weth-stable-fixture-v1,SYNTHETIC
+weth-stable-fixture-v1:synth-0004,synth-0004,synthetic,174300000000,1000000000000000000,300000000000,weth-stable-fixture-v1,SYNTHETIC
+weth-stable-fixture-v1:synth-0005,synth-0005,synthetic,174300000001,1000000000000000000,300000000000,weth-stable-fixture-v1,SYNTHETIC
+weth-stable-fixture-v1:synth-0006,synth-0006,synthetic,1,1,0,weth-stable-fixture-v1,SYNTHETIC

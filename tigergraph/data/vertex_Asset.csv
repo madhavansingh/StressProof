@@ -1,0 +1,3 @@
+vid,symbol,role,price_usd8,lt_bps,bonus_bps,decimals,dataset_id,data_class
+weth-stable-fixture-v1:WETH,WETH,collateral,300000000000,8300,10500,18,weth-stable-fixture-v1,SYNTHETIC
+weth-stable-fixture-v1:STABLE_DEBT,USDC,debt,,0,0,0,weth-stable-fixture-v1,SYNTHETIC

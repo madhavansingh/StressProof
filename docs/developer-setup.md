@@ -1,6 +1,6 @@
 # StressProof — Developer Setup Guide
 
-This guide details how each of the three developers sets up their local environment and runs their respective components.
+This guide explains how to set up and run each subsystem locally. StressProof is a single-owner project (see `CONTRIBUTING.md`, Governance); the sections follow the subsystems the original three contributors built.
 
 ---
 
@@ -15,9 +15,9 @@ This guide details how each of the three developers sets up their local environm
 
 ---
 
-## 1. Developer 1 — Frontend Setup
+## 1. Frontend Setup (originally Developer 1)
 
-Developer 1 owns `frontend/`.
+Covers `frontend/`.
 
 ```bash
 # 1. Install frontend dependencies
@@ -42,9 +42,9 @@ pnpm test
 
 ---
 
-## 2. Developer 2 — Backend & Risk Engine Setup
+## 2. Backend & Risk Engine Setup (originally Developer 2)
 
-Developer 2 owns `core/`, `pipeline/`, and `backend/`.
+Covers `core/`, `pipeline/`, and `backend/`.
 
 ```bash
 # 1. Sync Python workspace
@@ -73,9 +73,9 @@ make sweep
 
 ---
 
-## 3. Developer 3 — Blockchain & Agents Setup
+## 3. Blockchain & Agents Setup (originally Developer 3)
 
-Developer 3 owns `contracts/` and `agents/`.
+Covers `contracts/` and `agents/`.
 
 ```bash
 # 1. Test smart contracts

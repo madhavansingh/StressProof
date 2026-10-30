@@ -71,9 +71,9 @@ function WorkflowDiagram() {
   if (!mounted) return <div className="h-[200px] w-full" />;
 
   const stages = [
-    { name: "AAVE_FORK", desc: "Block #19500000" },
+    { name: "AAVE_FORK", desc: "Block #19000000" },
     { name: "PRICE_SHOCK", desc: "-3000 BPS" },
-    { name: "WASM_REPLAY", desc: "Deterministic" },
+    { name: "PY_REPLAY", desc: "Deterministic" },
     { name: "BONDED_CLAIM", desc: "0.01 ETH Stake" },
     { name: "CHALLENGE_WIN", desc: "120s Optimistic" },
     { name: "VAULT_DEFENSE", desc: "Max LTV 50%" },
@@ -119,7 +119,7 @@ function WorkflowDiagram() {
 
 /* ── Live Terminal Simulation Component ── */
 const TERMINAL_LOGS = [
-  "> [INITIALIZE] Loading Ethereum mainnet fork block #19500000...",
+  "> [INITIALIZE] Loading Ethereum mainnet fork block #19000000...",
   "> [DATASET] 5 monitored borrower accounts loaded into replayer memory",
   "> [ORACLE] Applying simulated price shock: WETH -3000 bps ($3,000 -> $2,100)",
   "> [EXECUTE] Deterministic replayer pass 1: Calculating liquidation thresholds",
@@ -186,7 +186,7 @@ function TerminalCard() {
 /* ── Stat Block ── */
 const PROTOCOL_STATS = [
   { label: "MONITORED_TVL", value: "$31.4M" },
-  { label: "FORK_BLOCK", value: "#19500000" },
+  { label: "FORK_BLOCK", value: "#19000000" },
   { label: "BOND_REQUIREMENT", value: "0.01 ETH" },
   { label: "REPLAY_LATENCY", value: "4.2ms" },
 ];
@@ -316,7 +316,7 @@ export function LandingPage() {
 
           {/* Subtitle */}
           <p className="text-xs sm:text-sm text-muted-foreground max-w-2xl leading-relaxed mb-8 uppercase">
-            StressProof guarantees AI-generated lending-market risk claims through bonded stakes, deterministic Wasm replayers, and on-chain circuit breakers. No hallucinations. Slashed stakes. Full protocol defense.
+            StressProof makes AI-generated lending-market risk claims accountable through bonded stakes, deterministic integer-math replay, and on-chain circuit breakers. Wrong claims can be challenged and their bonds slashed.
           </p>
 
           {/* Action Button Row */}
@@ -348,7 +348,7 @@ export function LandingPage() {
             <div key={i} className="flex items-center gap-8 text-xs font-bold uppercase tracking-widest mr-8">
               <span>[FORK_FIXTURE: AAVE_V3_ETH]</span>
               <span>&bull;</span>
-              <span>[FORK_BLOCK: #19,500,000]</span>
+              <span>[FORK_BLOCK: #19,000,000]</span>
               <span>&bull;</span>
               <span>[ORACLE_INDEX: $3,000.00 WETH]</span>
               <span>&bull;</span>
@@ -579,7 +579,7 @@ export function LandingPage() {
                 01
               </div>
               <h3 className="text-sm font-bold text-foreground uppercase tracking-wider">
-                DETERMINISTIC WASM REPLAY
+                DETERMINISTIC PYTHON REPLAY
               </h3>
               <p className="text-xs text-muted-foreground uppercase leading-relaxed">
                 Liquidation cascades are evaluated using pure state transition functions over block fixtures, ensuring reproducible output down to the single cent.

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useAccount, usePublicClient, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, usePublicClient, useWriteContract } from "wagmi";
+import { useTxReceipt } from "@/lib/web3/useTxReceipt";
 import { getContractConfig, ACTIVE_CHAIN_ID } from "@/lib/contracts";
 import { decodeContractError } from "@/lib/web3/errors";
 import { txPhase, txPhaseLabel } from "@/lib/web3/txStatus";
@@ -61,13 +62,14 @@ export default function VaultPage() {
     reset: clearReset,
   } = useWriteContract();
 
-  const { data: resetReceipt, isLoading: isResetConfirming, isSuccess: isResetConfirmed } =
-    useWaitForTransactionReceipt({ hash: resetTxHash });
+  // Settles reverted receipts too (wagmi's receipt hook throws on them and would leave this pending).
+  const { outcome: resetOutcome, isConfirming: isResetConfirming } = useTxReceipt(resetTxHash, ACTIVE_CHAIN_ID);
+  const isResetConfirmed = Boolean(resetOutcome);
   const resetPhase = txPhase({
     simulationPassed: false,
     awaitingSignature: isResetPending,
     hash: resetTxHash,
-    receiptStatus: resetReceipt?.status,
+    receiptStatus: resetOutcome?.status,
   });
 
   // Fetch real vault state from chain
@@ -235,7 +237,10 @@ export default function VaultPage() {
           }`}
         >
           <span>CONTROLS_RESET_TX: {resetTxHash}</span>
-          <span className="font-bold text-[10px] uppercase">{txPhaseLabel(resetPhase)}</span>
+          <span className="font-bold text-[10px] uppercase">
+            {txPhaseLabel(resetPhase)}
+            {resetPhase === "mined-reverted" && resetOutcome?.revertReason && ` — ${resetOutcome.revertReason}`}
+          </span>
         </div>
       )}
 

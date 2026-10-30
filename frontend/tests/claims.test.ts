@@ -62,3 +62,30 @@ describe("F2: Claim State Enum and Block Countdown", () => {
     expect(claim.marketId).toBe("0x2701f07d2eb0de529ccb283ac9cd1ebb8ed772916b7db0822335d9bcdabbc026");
   });
 });
+
+describe("claimActions: buttons follow the contract's time boundaries", () => {
+  it("offers challenge before the challenge deadline and finalize from it onward", async () => {
+    const { claimActions } = await import("../src/lib/claims");
+    const pending = { stateName: "Pending" as const, challengeDeadline: 1000n, resolutionDeadline: 0n };
+    expect(claimActions(pending, 999)).toEqual({ challenge: true, finalize: false, expire: false });
+    expect(claimActions(pending, 1000)).toEqual({ challenge: false, finalize: true, expire: false });
+  });
+
+  it("offers expire for a challenged claim once the resolution deadline is reached (it used to be missing)", async () => {
+    const { claimActions } = await import("../src/lib/claims");
+    const challenged = { stateName: "Challenged" as const, challengeDeadline: 1000n, resolutionDeadline: 1300n };
+    expect(claimActions(challenged, 1299)).toEqual({ challenge: false, finalize: false, expire: false });
+    expect(claimActions(challenged, 1300)).toEqual({ challenge: false, finalize: false, expire: true });
+  });
+
+  it("offers nothing for settled claims", async () => {
+    const { claimActions } = await import("../src/lib/claims");
+    for (const stateName of ["Finalized", "Rejected", "Expired"] as const) {
+      expect(claimActions({ stateName, challengeDeadline: 1n, resolutionDeadline: 1n }, 10_000)).toEqual({
+        challenge: false,
+        finalize: false,
+        expire: false,
+      });
+    }
+  });
+});
